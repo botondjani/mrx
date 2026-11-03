@@ -8,6 +8,11 @@ const MESSAGES: Record<string, string> = {
   area_not_set: 'Előbb jelöld ki a pályát.',
   roles_not_assigned: 'Előbb oszd ki a szerepeket.',
   player_not_found: 'Nincs ilyen játékos.',
+  invalid_option: 'Érvénytelen beállítás.',
+  point_not_found: 'Nincs ilyen pont.',
+  not_mrx: 'Ezt csak Mr. X teheti meg.',
+  game_not_running: 'A játék nem fut.',
+  overpass_: 'Az OpenStreetMap-szolgáltatás most nem érhető el, próbáld újra később.',
 };
 
 export function huError(e: unknown): string {

@@ -1,5 +1,6 @@
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -20,8 +21,14 @@ const STEPS: Record<Exclude<PermissionStep, 'done'>, { n: number; title: string;
     body: 'A játék zsebben, lezárt képernyővel is működik, ezért a helyzetedet a háttérben is el kell küldeni. A megnyíló beállításokban válaszd: „Mindig engedélyezés”. Játék közben ezt egy állandó értesítés jelzi, a játék végén a követés leáll.',
     button: 'Beállítások megnyitása',
   },
-  battery: {
+  notifications: {
     n: 3,
+    title: 'Értesítések',
+    body: 'Lezárt telefonon értesítés és rezgés jelzi a fontos eseményeket: Mr. X felfedését, ha közel vannak hozzád, ha kiléptél a pályáról, és a játék végét.',
+    button: 'Értesítések engedélyezése',
+  },
+  battery: {
+    n: 4,
     title: 'Akkumulátor-optimalizálás',
     body: 'Az Android energiatakarékossága lezárt képernyőn leállíthatja a játékot. Engedélyezd, hogy a Mr. X kivétel legyen az akkumulátor-optimalizálás alól.',
     button: 'Kivétel engedélyezése',
@@ -50,6 +57,7 @@ export default function Permissions() {
   async function request() {
     if (step === 'foreground') await Location.requestForegroundPermissionsAsync();
     if (step === 'background') await Location.requestBackgroundPermissionsAsync();
+    if (step === 'notifications') await Notifications.requestPermissionsAsync();
     if (step === 'battery') {
       const pkg = Constants.expoConfig?.android?.package ?? 'com.botondjani.mrx';
       await IntentLauncher.startActivityAsync('android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', {
@@ -63,7 +71,7 @@ export default function Permissions() {
   const s = STEPS[step];
   return (
     <View style={ui.screen}>
-      <Text style={ui.p}>{s.n}. lépés / 3</Text>
+      <Text style={ui.p}>{s.n}. lépés / 4</Text>
       <Text style={ui.h1}>{s.title}</Text>
       <Text style={ui.p}>{s.body}</Text>
       <View style={{ flex: 1 }} />

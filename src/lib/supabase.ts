@@ -34,6 +34,9 @@ export type Game = {
   config: Record<string, any>;
   started_at: string | null;
   ends_at: string | null;
+  finished_at: string | null;
+  winner: 'mrx' | 'detectives' | null;
+  caught_by: string | null;
 };
 
 export type Player = {
@@ -54,3 +57,7 @@ export type LivePosition = {
   heading: number | null;
   updated_at: string;
 };
+
+export type Reveal = { id: number; lat: number; lng: number; heading: number | null; kind: string; revealed_at: string };
+export type DetectiveSnapshot = { id: number; player_id: string; lat: number; lng: number; taken_at: string };
+export type PointRow = { id: string; name: string | null; kind: string | null; lat: number; lng: number };

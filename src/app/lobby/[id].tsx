@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { FlatList, Pressable, Switch, Text, View } from 'react-native';
 import { Btn, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
-import { useGame, usePlayers, useUserId } from '../../lib/hooks';
+import { useGame, usePlayers, usePoints, useUserId } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 
 const ROLE_LABEL = { mrx: 'Mr. X', detective: 'detektív' } as const;
@@ -12,6 +12,7 @@ export default function Lobby() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const game = useGame(id);
   const players = usePlayers(id);
+  const points = usePoints(id);
   const userId = useUserId();
   const [error, setError] = useState<string | null>(null);
   const isHost = !!game && game.host_user_id === userId;
@@ -62,6 +63,26 @@ export default function Lobby() {
             Pálya: {game.center_lat ? `${((game.radius_m ?? 0) / 1000).toLocaleString('hu-HU')} km sugarú kör` : 'nincs kijelölve'}
           </Text>
           <Btn title="Pálya kijelölése" variant="secondary" onPress={() => router.push(`/area/${id}`)} />
+          <Btn title={`Power-up pontok (${points.length})`} variant="secondary" onPress={() => router.push(`/points/${id}`)} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={ui.p}>Játékidő:</Text>
+            {(game.config.duration_options_min as number[]).map((m) => (
+              <Pressable
+                key={m}
+                onPress={() => call('set_options', { p_game: id, p_options: { duration_min: m } })}
+                style={{ padding: 8, borderRadius: 8, backgroundColor: game.config.duration_min === m ? '#1e6bd6' : '#e8f0fc' }}
+              >
+                <Text style={{ color: game.config.duration_min === m ? '#fff' : '#1e6bd6', fontWeight: '600' }}>{m} perc</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={ui.p}>Tömegközlekedés engedélyezve</Text>
+            <Switch
+              value={game.config.transit_allowed as boolean}
+              onValueChange={(v) => call('set_options', { p_game: id, p_options: { transit_allowed: v } })}
+            />
+          </View>
           <Btn title="Mr. X sorsolása" variant="secondary" onPress={() => call('assign_roles', { p_game: id, p_mrx_player: null })} />
           <Btn
             title={players.length < minPlayers ? `Indítás (min. ${minPlayers} játékos)` : 'Játék indítása'}
@@ -69,7 +90,10 @@ export default function Lobby() {
           />
         </>
       ) : (
-        <Text style={ui.p}>Várakozás a házigazdára…</Text>
+        <Text style={ui.p}>
+          Játékidő: {game.config.duration_min as number} perc · Tömegközlekedés: {game.config.transit_allowed ? 'engedélyezve' : 'tilos'}
+          {'\n'}Várakozás a házigazdára…
+        </Text>
       )}
       {error ? <Text style={ui.error}>{error}</Text> : null}
     </View>

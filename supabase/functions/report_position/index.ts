@@ -1,5 +1,7 @@
 // report_position: called by the background location task (and the bot simulator).
-// Stores positions, updates the player's live position and returns role-filtered events.
+// Authenticates the caller; all game logic runs in public.process_report() (one transaction).
+// Response: { game_status, events: [{ kind, payload }], next_interval_ms } – events are
+// already filtered per recipient, so a client only ever gets what its role may know.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 type Loc = {
@@ -34,53 +36,19 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "invalid_json" }, 400);
   }
-  const locations = (body.locations ?? []).filter(
-    (l) => Number.isFinite(l?.lat) && Number.isFinite(l?.lng) && Number.isFinite(l?.timestamp),
-  );
+  const locations = (body.locations ?? [])
+    .filter((l) => Number.isFinite(l?.lat) && Number.isFinite(l?.lng) && Number.isFinite(l?.timestamp))
+    .map(({ lat, lng, accuracy, speed, heading, timestamp }) => ({ lat, lng, accuracy, speed, heading, timestamp }));
   if (!body.game_id || locations.length === 0) return json({ error: "invalid_body" }, 400);
 
-  const { data: player } = await admin
-    .from("players")
-    .select("id, role, games!inner(status, config)")
-    .eq("game_id", body.game_id)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!player) return json({ error: "not_in_game" }, 403);
-
-  // deno-lint-ignore no-explicit-any
-  const game = (player as any).games as { status: string; config: Record<string, unknown> };
-  const nextIntervalMs = Number(game.config.report_interval_s) * 1000;
-  if (game.status !== "running") {
-    return json({ game_status: game.status, events: [], next_interval_ms: nextIntervalMs });
-  }
-
-  const rows = locations.map((l) => ({
-    game_id: body.game_id,
-    player_id: player.id,
-    lat: l.lat,
-    lng: l.lng,
-    accuracy_m: l.accuracy ?? null,
-    speed_mps: l.speed ?? null,
-    heading: l.heading ?? null,
-    recorded_at: new Date(l.timestamp).toISOString(),
-  }));
-  const { error: insertError } = await admin.from("positions").insert(rows);
-  if (insertError) return json({ error: insertError.message }, 500);
-
-  const last = rows.reduce((a, b) => (a.recorded_at > b.recorded_at ? a : b));
-  const { error: upsertError } = await admin.from("live_positions").upsert({
-    player_id: player.id,
-    game_id: body.game_id,
-    role: player.role,
-    lat: last.lat,
-    lng: last.lng,
-    accuracy_m: last.accuracy_m,
-    heading: last.heading,
-    speed_mps: last.speed_mps,
-    updated_at: new Date().toISOString(),
+  const { data, error } = await admin.rpc("process_report", {
+    p_user: userId,
+    p_game: body.game_id,
+    p_locations: locations,
   });
-  if (upsertError) return json({ error: upsertError.message }, 500);
-
-  // Phase 2 adds events: reveal, proximity, game_over, out_of_bounds, power-up.
-  return json({ game_status: game.status, events: [], next_interval_ms: nextIntervalMs });
+  if (error) {
+    const status = /not_in_game|game_not_found/.test(error.message) ? 403 : 500;
+    return json({ error: error.message }, status);
+  }
+  return json(data);
 });

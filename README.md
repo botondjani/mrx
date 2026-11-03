@@ -45,17 +45,20 @@ A build végén kapott linket nyisd meg a telefonon, töltsd le és telepítsd a
 npm run bots -- --code ABC123 --n 3 --speed 5
 # Teljesen botok által futtatott játék, 60 s várakozással, hogy emberek is beléphessenek:
 npm run bots -- --create --lat 47.4979 --lng 19.0402 --radius 1000 --n 4 --mrx 0 --speed 5 --start-after 60
+# Rövidített teljes játék (10 perc, 60 s előny); a detektív botok az utolsó felfedést üldözik:
+npm run bots -- --create --lat 47.4979 --lng 19.0402 --n 5 --mrx 0 --duration 10 --head-start 60
 ```
 
 ## Tesztek
 
 ```bash
 npm run typecheck
-node --env-file=.env scripts/rls-test.mjs   # a detektív soha nem kapja meg Mr. X élő pozícióját
+node --env-file=.env scripts/rls-test.mjs          # a detektív soha nem kapja meg Mr. X élő pozícióját
+node --env-file=.env scripts/visibility-test.mjs   # teljes rövid játék: Mr. X pozíciója csak felfedésként jut el
 ```
 
 ## Supabase
 
 - Migrációk: `supabase/migrations/` (az `mrx` projekten alkalmazva).
-- Edge Function: `supabase/functions/report_position/`.
+- Edge Functions: `supabase/functions/report_position/`, `supabase/functions/generate_points/`.
 - Anonymous sign-in bekapcsolva kell legyen (Authentication → Sign In / Providers).

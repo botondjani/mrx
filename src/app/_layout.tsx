@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { ui } from '../components/ui';
 import { huError } from '../lib/errors';
+import { setupNotifications } from '../lib/notifications';
 import { ensureSession } from '../lib/supabase';
 
 export default function RootLayout() {
@@ -10,6 +11,7 @@ export default function RootLayout() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setupNotifications();
     ensureSession().then(() => setReady(true), (e) => setError(huError(e)));
   }, []);
 
@@ -28,6 +30,8 @@ export default function RootLayout() {
       <Stack.Screen name="lobby/[id]" options={{ title: 'Váróterem' }} />
       <Stack.Screen name="area/[id]" options={{ title: 'Pálya kijelölése' }} />
       <Stack.Screen name="game/[id]" options={{ title: 'Játék', headerBackVisible: false }} />
+      <Stack.Screen name="points/[id]" options={{ title: 'Power-up pontok' }} />
+      <Stack.Screen name="end/[id]" options={{ title: 'Játék vége', headerBackVisible: false }} />
       <Stack.Screen name="log" options={{ title: 'Napló' }} />
     </Stack>
   );

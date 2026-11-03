@@ -24,6 +24,28 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
 - `assert_host_lobby` belső helper, authenticated-től visszavonva.
 - `pg_cron` csak a 3. fázisban kerül be (pozíciótörlés).
 
+### 2. fázis
+- Játéklogika: `public.process_report()` (plpgsql, a `games` sor zárolva, egy tranzakció), a `report_position`
+  csak hitelesít és ezt hívja. Csak a service role futtathatja.
+  Minden jelentésnél: előny vége, felfedés (`next_reveal_at`, utolsó `endgame_s`-ben gyorsabb), pályahatár
+  (`out_since`, Mr. X-nél türelmi idő után `penalty_until` → minden Mr. X-jelentés `penalty` felfedés),
+  sebességfigyelés (ha tilos a tömegközlekedés), előny alatti 100 m, közelség (50 m, 30 s ismétlés),
+  gyors mód (150 m → 3 s), Mr. X-pillanatkép a detektívekről (`detective_snapshots`), időlejárat → játék vége.
+  Az idő csak jelentésekkor halad (ha senki nem jelent, a játék nem zárul le – a kliens maga is számol).
+- Események: `events` tábla címzettenként; a `report_position` válasza kézbesíti (→ lokális értesítés + rezgés).
+- Kezdőpont = a pálya középpontja (feltételezés).
+- Kliens: a GPS mindig a gyors (3 s) ütemben fut, a küldést a szerver `next_interval_ms`-e szabályozza
+  (Android 12+ háttérből nem indítható újra a foreground service). Kompromisszum: valamivel több akku.
+- Elkapás: `catch_candidates` (csak nevek + „közel” jelző, koordináta nélkül) és `confirm_catch` (csak Mr. X).
+- Host-beállítások: `set_options` (whitelist + tartományok), játékidő 45/60/90 perc, tömegközlekedés.
+- Power-up pontok: `generate_points` Edge Function. A nyilvános Overpass-szerverek a felhős IP-ket
+  elutasítják (406 / timeout a Supabase Edge-ről), ezért a host telefonja futtatja a lekérdezést
+  (`need_overpass` → kliens lekér → elküldi), a szerver válogat (≥150 m, max 12) és cache-el (7 nap).
+- Tesztek: `scripts/rls-test.mjs`, `scripts/visibility-test.mjs` (minden kliensforgalom rögzítése,
+  Mr. X koordináta csak felfedésként; Mr. X detektív-koordinátát csak pillanatképként kap).
+- `overpass_probe` Edge Function: kivezetett diagnosztika (410-et ad), a dashboardon törölhető.
+
 ## Állapot
-- 1. fázis: kód kész; valós eszközös teszt (2 telefon, lezárt képernyő) folyamatban.
+- 1. fázis: kód kész, szerveroldal ellenőrizve; valós eszközös teszt (2 telefon, lezárt képernyő) még hátra.
+- 2. fázis: kód kész, botokkal és láthatósági teszttel ellenőrizve; valós 2 telefonos teszt hátra.
 - Ismert MVP-egyszerűsítés: a kliens Realtime eseményre újratölti a táblát (egyszerű, RLS-helyes; 12 játékosig elég).
