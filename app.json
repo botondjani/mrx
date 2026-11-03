@@ -19,7 +19,9 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"],
+      "permissions": [
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
@@ -35,6 +37,12 @@
           "locationWhenInUsePermission": "A játékhoz szükség van a helyzetedre."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "37816be3-0f65-4a39-a9f9-c2964432dff2"
+      }
+    },
+    "owner": "botond2004s-team"
   }
 }
