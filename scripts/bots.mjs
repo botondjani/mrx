@@ -146,9 +146,10 @@ async function tick(bot) {
 }
 
 for (;;) {
+  const t0 = Date.now();
   const results = await Promise.all(bots.map(tick));
   const ts = new Date().toISOString().slice(11, 19);
   console.log(`${ts} reported ${bots.length} positions`, results[0]?.events?.length ? results[0].events : "");
   if (results.some((r) => r?.game_status === "finished")) break;
-  await sleep(intervalS * 1000);
+  await sleep(Math.max(0, intervalS * 1000 - (Date.now() - t0)));
 }
