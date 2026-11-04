@@ -10,6 +10,7 @@ const MESSAGES: Record<string, string> = {
   player_not_found: 'Nincs ilyen játékos.',
   invalid_option: 'Érvénytelen beállítás.',
   point_not_found: 'Nincs ilyen pont.',
+  point_outside_area: 'A pont csak a körön belülre kerülhet.',
   not_mrx: 'Ezt csak Mr. X teheti meg.',
   game_not_running: 'A játék nem fut.',
   game_not_finished: 'A játék még nem ért véget.',
@@ -22,7 +23,6 @@ const MESSAGES: Record<string, string> = {
   head_start: 'Az előny alatt nem használhatsz tárgyat.',
   no_items_for_role: 'Ebben a játékban a te szerepednek nincs engedélyezett tárgya.',
   decoy_too_far: 'A csali legfeljebb 300 m-re lehet tőled.',
-  overpass_: 'Az OpenStreetMap-szolgáltatás most nem érhető el, próbáld újra később.',
 };
 
 export function huError(e: unknown): string {

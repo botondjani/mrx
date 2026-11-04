@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { GameMap } from '../../components/GameMap';
 import { ITEM_KINDS, ITEMS } from '../../lib/items';
@@ -17,6 +17,7 @@ export default function Lobby() {
   const points = usePoints(id);
   const userId = useUserId();
   const [error, setError] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const isHost = !!game && game.host_user_id === userId;
 
   useEffect(() => {
@@ -32,14 +33,21 @@ export default function Lobby() {
   if (!game) return <View style={ui.screen} />;
   const minPlayers = game.config.min_players as number;
 
+  const set = (options: Record<string, unknown>) => call('set_options', { p_game: id, p_options: options });
   const chip = (label: string, active: boolean, onPress: () => void) => (
     <Pressable
       key={label}
       onPress={onPress}
-      style={{ padding: 8, borderRadius: 6, borderWidth: 1, borderColor: C.gold, backgroundColor: active ? C.gold : 'transparent' }}
+      style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 5, borderWidth: 1, borderColor: C.gold, backgroundColor: active ? C.gold : 'transparent' }}
     >
-      <Text style={{ color: active ? C.bg : C.gold, fontFamily: FONT }}>{label}</Text>
+      <Text style={{ color: active ? C.bg : C.gold, fontFamily: FONT, fontSize: 13 }}>{label}</Text>
     </Pressable>
+  );
+  const row = (label: string, children: ReactNode[]) => (
+    <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <Text style={[ui.muted, { width: 82, fontSize: 13 }]}>{label}</Text>
+      <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{children}</View>
+    </View>
   );
   const zonePct = (game.config.zone_final_pct as number | undefined) ?? 100;
   const enabled = (game.config.items ?? {}) as Record<'detective' | 'mrx', string[]>;
@@ -47,10 +55,13 @@ export default function Lobby() {
     const role = ITEMS[kind].role;
     const list = enabled[role] ?? [];
     const next = list.includes(kind) ? list.filter((k) => k !== kind) : [...list, kind];
-    call('set_options', { p_game: id, p_options: { items: { ...enabled, [role]: next } } });
+    set({ items: { ...enabled, [role]: next } });
   };
   const itemSummary = (role: 'detective' | 'mrx') =>
     (enabled[role] ?? []).map((k) => ITEMS[k as keyof typeof ITEMS]?.label ?? k).join(', ') || 'nincs';
+  const summary =
+    `${game.config.duration_min}′ · kör ${zonePct < 100 ? `${zonePct}%-ra szűkül` : 'fix'} · ${game.config.points_max} pont · ` +
+    `${Math.round((game.config.point_cooldown_s ?? 600) / 60)}′ újratöltés · tömegközl. ${game.config.transit_allowed ? 'igen' : 'nem'}`;
 
   return (
     <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={ui.screen}>
@@ -94,62 +105,57 @@ export default function Lobby() {
       ) : null}
       {isHost ? (
         <>
-          <Text style={ui.p}>
-            Pálya: {game.center_lat ? `${((game.radius_m ?? 0) / 1000).toLocaleString('hu-HU')} km sugarú kör` : 'nincs kijelölve'}
-          </Text>
-          <Btn title="Pálya kijelölése" variant="secondary" onPress={() => router.push(`/area/${id}`)} />
-          <Btn title={`Power-up pontok (${points.length})`} variant="secondary" onPress={() => router.push(`/points/${id}`)} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={ui.p}>Játékidő:</Text>
-            {(game.config.duration_options_min as number[]).map((m) =>
-              chip(`${m} perc`, game.config.duration_min === m, () => call('set_options', { p_game: id, p_options: { duration_min: m } })),
-            )}
-          </View>
-          <View style={{ gap: 6 }}>
-            <Text style={ui.p}>Kör szűkülése a játék végéig:</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[100, 75, 50, 25].map((pct) =>
-                chip(pct === 100 ? 'Nincs' : `${pct}%-ra`, zonePct === pct, () =>
-                  call('set_options', { p_game: id, p_options: { zone_final_pct: pct } }),
-                ),
-              )}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Btn title="Pálya" variant="secondary" onPress={() => router.push(`/area/${id}`)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Btn
+                title={`Pontok (${points.length})`}
+                variant="secondary"
+                disabled={game.center_lat == null}
+                onPress={() => router.push(`/points/${id}`)}
+              />
             </View>
           </View>
-          <View style={{ gap: 6 }}>
-            <Text style={[ui.stamp, { color: C.gold }]}>Power-upok</Text>
-            {(['detective', 'mrx'] as const).map((role) => (
-              <View key={role} style={{ gap: 6 }}>
-                <Text style={ui.muted}>{role === 'mrx' ? 'Mr. X tárgyai' : 'Detektívek tárgyai'} (koppints a ki-/bekapcsoláshoz)</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {ITEM_KINDS.filter((k) => ITEMS[k].role === role).map((k) =>
+          <View style={{ borderWidth: 1, borderColor: C.line, borderRadius: 6, padding: 10, gap: 8 }}>
+            <Pressable onPress={() => setShowSettings((v) => !v)} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={[ui.stamp, { color: C.gold }]}>Beállítások</Text>
+              <Text style={{ color: C.gold, fontFamily: FONT }}>{showSettings ? '▴' : '▾'}</Text>
+            </Pressable>
+            {!showSettings ? (
+              <Text style={ui.muted}>{summary}</Text>
+            ) : (
+              <>
+                {row('Játékidő', (game.config.duration_options_min as number[]).map((m) =>
+                  chip(`${m}′`, game.config.duration_min === m, () => set({ duration_min: m })),
+                ))}
+                {row('Kör szűkül', [100, 75, 50, 25].map((pct) =>
+                  chip(pct === 100 ? 'nem' : `${pct}%`, zonePct === pct, () => set({ zone_final_pct: pct })),
+                ))}
+                {row('Pontok', [6, 9, 12, 16].map((n) =>
+                  chip(String(n), game.config.points_max === n, () => set({ points_max: n })),
+                ))}
+                {row('Újratöltés', [5, 10, 15].map((m) =>
+                  chip(`${m}′`, game.config.point_cooldown_s === m * 60, () => set({ point_cooldown_s: m * 60 })),
+                ))}
+                {(['detective', 'mrx'] as const).map((role) =>
+                  row(role === 'mrx' ? 'Mr. X' : 'Detektív', ITEM_KINDS.filter((k) => ITEMS[k].role === role).map((k) =>
                     chip(ITEMS[k].label, (enabled[role] ?? []).includes(k), () => toggleItem(k)),
-                  )}
-                </View>
-              </View>
-            ))}
-            <Text style={ui.muted}>Pontok száma a térképen (újragenerálás után érvényes)</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[6, 9, 12, 16].map((n) =>
-                chip(String(n), game.config.points_max === n, () => call('set_options', { p_game: id, p_options: { points_max: n } })),
-              )}
-            </View>
-            <Text style={ui.muted}>Újratöltés pontonként, játékosonként</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[5, 10, 15].map((m) =>
-                chip(`${m} perc`, game.config.point_cooldown_s === m * 60, () =>
-                  call('set_options', { p_game: id, p_options: { point_cooldown_s: m * 60 } }),
-                ),
-              )}
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={ui.p}>Tömegközlekedés engedélyezve</Text>
-            <Switch
-              value={game.config.transit_allowed as boolean}
-              onValueChange={(v) => call('set_options', { p_game: id, p_options: { transit_allowed: v } })}
-              trackColor={{ true: C.gold, false: C.line }}
-              thumbColor={C.ink}
-            />
+                  )),
+                )}
+                {row('Tömegközl.', [
+                  <Switch
+                    key="transit"
+                    value={game.config.transit_allowed as boolean}
+                    onValueChange={(v) => set({ transit_allowed: v })}
+                    trackColor={{ true: C.gold, false: C.line }}
+                    thumbColor={C.ink}
+                  />,
+                ])}
+                <Text style={ui.muted}>A pontok száma újrasorsoláskor lép életbe.</Text>
+              </>
+            )}
           </View>
           <Btn title="Mr. X sorsolása" variant="secondary" onPress={() => call('assign_roles', { p_game: id, p_mrx_player: null })} />
           <Btn

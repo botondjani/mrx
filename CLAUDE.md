@@ -91,6 +91,16 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
 - Host-beállítás (`set_options`): `items` (szerepenként engedélyezett lista, validált), `points_max` (3–20),
   `point_cooldown_s` (60–3600). Lobby: tárgy-chipek, pontszám 6/9/12/16, újratöltés 5/10/15 perc.
 
+### Pontok, pálya, ikon (2026-11-04)
+- Power-up pontok mindig véletlenek (`generate_points`: `points_max` db, ≥150 m, a kör belső 90%-ában);
+  az Overpass/OSM-helykeresés megszűnt (`overpass_cache` tábla már nem használt). Pálya mentésekor a kliens
+  automatikusan újrasorsolja a pontokat.
+- Host húzással mozgathatja a pontokat (`move_point`, csak lobbyban, az eredeti körön belül bárhová) és a
+  pálya középpontját (húzható arany pin, „Saját helyemre” gomb). `GameMap`: `onPointMove`, `onCenterMove`, `redrawKey`.
+- Lobby-beállítások összecsukható, tömör sorokban.
+- Ikon: nagyító bíbor írógépes X-szel, sötét háttér (Playwright-tal renderelt SVG); `expo-splash-screen` sötét
+  háttérrel, `userInterfaceStyle: dark`. Az ikon natív → új APK kellett; a JS-runtime 0.2.0 maradt.
+
 ### Gyors frissítés (EAS Update)
 - `expo-updates`, `runtimeVersion: appVersion`, csatorna: `preview` (eas.json). Csak JS-változás:
   `npx eas-cli@latest update --channel preview --message "..."` → a telefonok induláskor letöltik.

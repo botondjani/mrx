@@ -9,7 +9,7 @@ const KEY = process.env.EXPO_PUBLIC_SUPABASE_KEY;
 const C = { lat: 47.4979, lng: 19.0402 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const ok = ({ data, error }) => {
-  if (error) throw error;
+  if (error) throw new Error(error.message ?? JSON.stringify(error)); // Error → stack trace with line
   return data;
 };
 const fails = async (p, code) => {
@@ -53,13 +53,18 @@ ok(await mrx.sb.rpc("set_options", { p_game: game.id, p_options: {
 await fails(mrx.sb.rpc("set_options", { p_game: game.id, p_options: { items: { mrx: ["nuke"] } } }), "invalid_option");
 for (const b of [d1, d2, d3]) ok(await b.sb.rpc("join_game", { p_code: game.code, p_name: b.name }));
 
-// 12 synthetic OSM nodes on a line through the center, 160 m apart (Overpass is not reachable from CI/cloud).
-const elements = Array.from({ length: 12 }, (_, i) => ({
-  type: "node", id: i + 1, ...(({ lat, lng }) => ({ lat, lon: lng }))(east(160 * i - 880)), tags: { name: `P${i + 1}`, highway: "bus_stop" },
-}));
-const gen = ok(await mrx.sb.functions.invoke("generate_points", { body: { game_id: game.id, elements } }));
-assert.equal(gen.count, 12);
-const points = ok(await mrx.sb.from("points").select("id, name, lat, lng").eq("game_id", game.id)).sort((a, b) => a.lng - b.lng);
+// Random points, then the host drags them onto a line through the center, 160 m apart
+// (deterministic walking distances; also exercises move_point).
+const line = (i) => east(160 * i - 880);
+async function placePoints(host, gameId) {
+  const gen = ok(await host.sb.functions.invoke("generate_points", { body: { game_id: gameId } }));
+  assert.equal(gen.count, 12);
+  const pts = ok(await host.sb.from("points").select("id").eq("game_id", gameId));
+  for (const [i, pt] of pts.entries()) ok(await host.sb.rpc("move_point", { p_point: pt.id, p_lat: line(i).lat, p_lng: line(i).lng }));
+  await fails(host.sb.rpc("move_point", { p_point: pts[0].id, p_lat: C.lat + 0.1, p_lng: C.lng }), "point_outside_area");
+  return ok(await host.sb.from("points").select("id, name, lat, lng").eq("game_id", gameId)).sort((a, b) => a.lng - b.lng);
+}
+const points = await placePoints(mrx, game.id);
 
 const players = ok(await mrx.sb.from("players").select("id, user_id").eq("game_id", game.id));
 const pid = (b) => players.find((p) => p.user_id === b.userId).id;
@@ -182,8 +187,7 @@ ok(await mrx.sb.rpc("save_replay", { p_game: game.id }));
   const g2 = ok(await x2.sb.rpc("create_game", { p_name: "X2" }));
   ok(await x2.sb.rpc("set_area", { p_game: g2.id, p_lat: C.lat, p_lng: C.lng, p_radius_m: 2000 }));
   ok(await x2.sb.rpc("set_options", { p_game: g2.id, p_options: { head_start_s: 0, items: { detective: ["compass"], mrx: ["hide", "jam"] } } }));
-  ok(await x2.sb.functions.invoke("generate_points", { body: { game_id: g2.id, elements } }));
-  const pts2 = ok(await x2.sb.from("points").select("id, lat, lng").eq("game_id", g2.id)).sort((a, b) => a.lng - b.lng);
+  const pts2 = await placePoints(x2, g2.id);
   for (const b of [e1, e2, e3]) ok(await b.sb.rpc("join_game", { p_code: g2.code, p_name: b.name }));
   const pl2 = ok(await x2.sb.from("players").select("id, user_id").eq("game_id", g2.id));
   ok(await x2.sb.rpc("assign_roles", { p_game: g2.id, p_mrx_player: pl2.find((p) => p.user_id === x2.userId).id }));

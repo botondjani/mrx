@@ -6,7 +6,7 @@
     "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.botondjani.mrx"
@@ -14,7 +14,7 @@
     "android": {
       "package": "com.botondjani.mrx",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0e0f13",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -37,6 +37,14 @@
           "isIosBackgroundLocationEnabled": true,
           "locationAlwaysAndWhenInUsePermission": "A játék a háttérben is követi a helyzetedet, hogy a többiek lássanak.",
           "locationWhenInUsePermission": "A játékhoz szükség van a helyzetedre."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0e0f13",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
         }
       ]
     ],

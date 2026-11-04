@@ -28,6 +28,9 @@ type Props = {
   reveals?: MapReveal[]; // oldest first; the last one pulses
   points?: MapPoint[];
   onPress?: (lngLat: [number, number]) => void;
+  onPointMove?: (id: string, lat: number, lng: number) => void; // makes points draggable
+  onCenterMove?: (lat: number, lng: number) => void; // shows a draggable center pin
+  redrawKey?: number; // bump to force a redraw (e.g. snap a rejected drag back)
 };
 
 const HTML = `<!doctype html><html><head>
@@ -55,7 +58,11 @@ const HTML = `<!doctype html><html><head>
   }).addTo(map);
   const layer = L.layerGroup().addTo(map);
   let centered = false;
-  map.on('click', (e) => window.ReactNativeWebView.postMessage(JSON.stringify([e.latlng.lng, e.latlng.lat])));
+  const send = (m) => window.ReactNativeWebView.postMessage(JSON.stringify(m));
+  map.on('click', (e) => send({ t: 'click', lat: e.latlng.lat, lng: e.latlng.lng }));
+  const pin = (color, size) => L.divIcon({ className: '', iconSize: [size, size],
+    html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + color +
+      ';border:3px solid ${C.gold};box-shadow:0 0 0 6px rgba(212,167,60,.25)"></div>' });
   const label = (m, t) => t && m.bindTooltip(t, { permanent: true, direction: 'bottom', className: 'lbl', offset: [0, 6] });
   window.setState = (s) => {
     layer.clearLayers();
@@ -70,8 +77,19 @@ const HTML = `<!doctype html><html><head>
       map.fitBounds([[s.center.lat - dLat, s.center.lng - dLng], [s.center.lat + dLat, s.center.lng + dLng]]);
       centered = true;
     }
-    for (const p of s.points) label(L.circleMarker([p.lat, p.lng], { radius: 7, color: '${C.gold}', weight: 2,
-      fillColor: '${C.ink}', fillOpacity: 1, interactive: false }).addTo(layer), p.label);
+    for (const p of s.points) {
+      if (s.dragPoints) {
+        // Draggable (host, lobby): bigger touch target.
+        const m = L.marker([p.lat, p.lng], { draggable: true, icon: pin('${C.ink}', 22) }).addTo(layer);
+        m.on('dragend', () => { const ll = m.getLatLng(); send({ t: 'point', id: p.id, lat: ll.lat, lng: ll.lng }); });
+        label(m, p.label);
+      } else label(L.circleMarker([p.lat, p.lng], { radius: 7, color: '${C.gold}', weight: 2,
+        fillColor: '${C.ink}', fillOpacity: 1, interactive: false }).addTo(layer), p.label);
+    }
+    if (s.dragCenter) {
+      const m = L.marker([s.center.lat, s.center.lng], { draggable: true, icon: pin('${C.gold}', 30) }).addTo(layer);
+      m.on('dragend', () => { const ll = m.getLatLng(); send({ t: 'center', lat: ll.lat, lng: ll.lng }); });
+    }
     const r = s.reveals;
     if (r.length > 1) L.polyline(r.map((x) => [x.lat, x.lng]), { color: '${C.crimson}', opacity: .45, weight: 2,
       dashArray: '4 4', interactive: false }).addTo(layer);
@@ -94,7 +112,9 @@ const HTML = `<!doctype html><html><head>
   window.ReactNativeWebView.postMessage('ready');
 </script></body></html>`;
 
-export function GameMap({ center, radiusM, zoneRadiusM, players = [], reveals = [], points = [], onPress }: Props) {
+export function GameMap({
+  center, radiusM, zoneRadiusM, players = [], reveals = [], points = [], onPress, onPointMove, onCenterMove, redrawKey,
+}: Props) {
   const web = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   // Re-injected only when the serialized state actually changes.
@@ -105,6 +125,9 @@ export function GameMap({ center, radiusM, zoneRadiusM, players = [], reveals = 
     players,
     reveals,
     points,
+    dragPoints: !!onPointMove,
+    dragCenter: !!onCenterMove,
+    redrawKey,
   });
 
   useEffect(() => {
@@ -120,7 +143,10 @@ export function GameMap({ center, radiusM, zoneRadiusM, players = [], reveals = 
       source={{ html: HTML, baseUrl: 'https://mrx.botondjani.app/' }}
       onMessage={(e) => {
         if (e.nativeEvent.data === 'ready') return setReady(true);
-        onPress?.(JSON.parse(e.nativeEvent.data));
+        const m = JSON.parse(e.nativeEvent.data);
+        if (m.t === 'click') onPress?.([m.lng, m.lat]);
+        if (m.t === 'point') onPointMove?.(m.id, m.lat, m.lng);
+        if (m.t === 'center') onCenterMove?.(m.lat, m.lng);
       }}
     />
   );
