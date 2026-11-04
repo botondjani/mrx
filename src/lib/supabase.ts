@@ -37,6 +37,8 @@ export type Game = {
   finished_at: string | null;
   winner: 'mrx' | 'detectives' | null;
   caught_by: string | null;
+  rematch_game_id: string | null;
+  replay_public: boolean;
 };
 
 export type Player = {

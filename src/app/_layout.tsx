@@ -58,6 +58,7 @@ export default function RootLayout() {
       <Stack.Screen name="game/[id]" options={{ title: 'Játék', headerBackVisible: false }} />
       <Stack.Screen name="end/[id]" options={{ title: 'Játék vége', headerBackVisible: false }} />
       <Stack.Screen name="replay/[id]" options={{ title: 'Visszajátszás' }} />
+      <Stack.Screen name="join/[code]" options={{ title: 'Meghívó' }} />
       <Stack.Screen name="log" options={{ title: 'Napló' }} />
     </Stack>
     </>

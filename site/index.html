@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mr. X – városi hajsza</title>
+<meta property="og:title" content="Mr. X – városi hajsza">
+<meta property="og:description" content="GPS-es bújócska a városban: egy Mr. X, a többiek detektívek.">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+  :root { --bg:#0e0f13; --panel:#171920; --line:#2a2d36; --ink:#ece4d4; --muted:#9a927f; --gold:#d4a73c; --crimson:#c8323c; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:28px 16px 48px; }
+  .tw { font-family:"Special Elite", monospace; letter-spacing:.04em; }
+  .stamp { font-family:"Special Elite", monospace; text-transform:uppercase; letter-spacing:.18em; font-size:13px; color:var(--gold); }
+  h1 { font-family:"Special Elite", monospace; font-weight:400; font-size:40px; margin:6px 0 4px; }
+  h1 .x { color:var(--crimson); }
+  .code { font-family:"Special Elite", monospace; font-size:44px; letter-spacing:.3em; color:var(--gold); margin:8px 0 16px; }
+  .btn { display:block; text-align:center; padding:14px 16px; border-radius:6px; margin:10px 0; text-decoration:none;
+         font-family:"Special Elite", monospace; text-transform:uppercase; letter-spacing:.06em; font-size:16px; border:1px solid var(--gold); }
+  .btn.primary { background:var(--gold); color:var(--bg); }
+  .btn.secondary { color:var(--gold); }
+  .muted { color:var(--muted); font-size:14px; }
+  ol { padding-left:20px; color:var(--muted); font-size:14px; }
+  #map { height:380px; border:1px solid var(--line); border-radius:6px; margin:14px 0 8px; background:var(--panel); }
+  .leaflet-tile-pane { filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.5); }
+  .leaflet-control-attribution { background:rgba(14,15,19,.7) !important; color:var(--muted); }
+  .leaflet-control-attribution a { color:var(--gold); }
+  .stamp-box { display:inline-block; border:3px solid var(--crimson); color:var(--crimson); padding:2px 12px; transform:rotate(-6deg);
+               font-family:"Special Elite", monospace; font-size:24px; margin:6px 0 10px; }
+  .row { display:flex; gap:8px; align-items:center; }
+  input[type=range] { flex:1; accent-color:var(--gold); }
+  .hl p { margin:4px 0; }
+  .titles { color:var(--gold); font-family:"Special Elite", monospace; font-size:14px; }
+  .leaflet-tooltip { background:rgba(14,15,19,.85); color:var(--ink); border:0; box-shadow:none; }
+  .leaflet-tooltip:before { display:none; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="stamp">Városi hajsza · szigorúan titkos</div>
+  <h1>🕵️ MR. <span class="x">X</span></h1>
+
+  <!-- Invite: ?join=CODE -->
+  <section id="join" hidden>
+    <p>Meghívtak egy ügybe. Az ügyszám:</p>
+    <div class="code" id="join-code"></div>
+    <a class="btn primary" id="open-app">Megnyitás az appban</a>
+    <a class="btn secondary" id="download">App letöltése (Android)</a>
+    <ol>
+      <li>Ha még nincs meg az app, töltsd le és telepítsd (engedélyezd az „ismeretlen forrásból” telepítést).</li>
+      <li>Utána gyere vissza ide, és koppints a <b>Megnyitás az appban</b> gombra – egyenesen a váróterembe visz.</li>
+      <li>Vagy az appban a kezdőlapon írd be a fenti kódot.</li>
+    </ol>
+  </section>
+
+  <!-- Shared replay: ?replay=CODE -->
+  <section id="replay" hidden>
+    <div class="stamp" id="r-code"></div>
+    <h2 class="tw" id="r-name" style="font-weight:400;margin:6px 0"></h2>
+    <div class="stamp-box" id="r-stamp"></div>
+    <div id="map"></div>
+    <div class="row"><button class="btn primary" id="play" style="margin:0;flex:0 0 130px">Lejátszás</button>
+      <input type="range" id="seek" min="0" max="1000" value="1000"><span class="muted" id="clock"></span></div>
+    <div class="hl" id="r-lines"></div>
+    <p class="titles" id="r-titles"></p>
+    <a class="btn primary" id="r-download">Játszd te is – app letöltése</a>
+  </section>
+
+  <section id="error" hidden><p id="error-text"></p></section>
+
+  <!-- Default -->
+  <section id="home" hidden>
+    <p>GPS-es bújócska a városban. Egy játékos Mr. X, a többiek detektívek: időnként felfedődik a helye,
+      a detektívek üldözik, power-upokkal trükköznek – és a végén megvan a sztori.</p>
+    <a class="btn primary" id="home-download">App letöltése (Android)</a>
+  </section>
+</main>
+<script>
+const SUPABASE_URL = 'https://puionefgssztaoyugxks.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4u_8_SW0_cltBVZIJhJ3GA_LVElH_aD';
+const APK_URL = '__APK_URL__';
+const PACKAGE = 'com.botondjani.mrx';
+const params = new URLSearchParams(location.search);
+const clean = (s) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+const show = (id) => (document.getElementById(id).hidden = false);
+const $ = (id) => document.getElementById(id);
+for (const id of ['download', 'r-download', 'home-download']) $(id).href = APK_URL;
+
+const join = clean(params.get('join'));
+const replay = clean(params.get('replay'));
+
+if (join.length === 6) {
+  show('join');
+  $('join-code').textContent = join;
+  // Android intent URL: opens the app's mrx://join/CODE route, or the APK download if the app is missing.
+  $('open-app').href = /Android/i.test(navigator.userAgent)
+    ? `intent://join/${join}#Intent;scheme=mrx;package=${PACKAGE};S.browser_fallback_url=${encodeURIComponent(APK_URL)};end`
+    : `mrx://join/${join}`;
+} else if (replay.length === 6) {
+  loadReplay(replay);
+} else show('home');
+
+const az = (n) => (/^(1|5\d*|1\d{3})$/.test(String(n)) ? 'az' : 'a');
+function storyLines(s) {
+  const lines = [s.winner === 'mrx'
+    ? `${s.mrx} (Mr. X) ${s.duration_min} percig bujkált – és megúszta.`
+    : `${s.caught_by} elkapta Mr. X-et (${s.mrx}) ${az(s.duration_min)} ${s.duration_min}. percben.`];
+  if (s.closest) lines.push(s.winner === 'mrx'
+    ? `Hajszálnyira: ${s.closest.name} ${s.closest.meters} méterre volt tőle ${az(s.closest.minute)} ${s.closest.minute}. percben.`
+    : `Előtte ${s.closest.name} már ${s.closest.meters} méterre járt ${az(s.closest.minute)} ${s.closest.minute}. percben.`);
+  lines.push(`${s.reveals} felfedés`);
+  return lines;
+}
+
+async function loadReplay(code) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/public_replay`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_code: code }),
+  });
+  if (!res.ok) {
+    show('error');
+    $('error-text').textContent = 'Ez a visszajátszás nem nyilvános, vagy már törlődött.';
+    return;
+  }
+  const d = await res.json();
+  show('replay');
+  $('r-code').textContent = 'Ügyirat #' + d.code;
+  $('r-name').textContent = d.case_name;
+  $('r-stamp').textContent = d.winner === 'mrx' ? 'MEGSZÖKÖTT' : 'ELFOGVA';
+  $('r-lines').innerHTML = storyLines(d).map((l) => `<p>${l.replace(/</g, '&lt;')}</p>`).join('');
+  $('r-titles').textContent = d.players.map((p) => `${p.name} – ${p.title}`).join('  ·  ');
+
+  const map = L.map('map', { zoomControl: false });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+  const dLat = d.radius_m / 111320, dLng = dLat / Math.cos(d.center.lat * Math.PI / 180);
+  map.fitBounds([[d.center.lat - dLat, d.center.lng - dLng], [d.center.lat + dLat, d.center.lng + dLng]]);
+  L.circle([d.center.lat, d.center.lng], { radius: d.radius_m, color: '#d4a73c', weight: 2, dashArray: '6 4', fillOpacity: 0.05 }).addTo(map);
+
+  // Per-player tracks; drawn up to the current replay time.
+  const start = Date.parse(d.started_at) / 1000, end = Date.parse(d.finished_at) / 1000;
+  const byP = {};
+  for (const [pid, t, lat, lng] of d.tracks) (byP[pid] ||= []).push([t, lat, lng]);
+  const layers = Object.entries(byP).map(([pid, pts]) => {
+    const mrx = d.roles[pid]?.role === 'mrx';
+    return {
+      pts,
+      line: L.polyline([], { color: mrx ? '#c8323c' : '#d4a73c', weight: mrx ? 4 : 2, opacity: mrx ? 1 : 0.8 }).addTo(map),
+      dot: L.circleMarker([pts[0][1], pts[0][2]], { radius: 7, color: '#0e0f13', weight: 2, fillColor: mrx ? '#c8323c' : '#d4a73c', fillOpacity: 1 })
+        .bindTooltip(d.roles[pid]?.name || '', { permanent: true, direction: 'bottom', className: 'tw' }).addTo(map),
+    };
+  });
+  function render(t) {
+    for (const l of layers) {
+      const shown = l.pts.filter((p) => p[0] <= t);
+      l.line.setLatLngs(shown.map((p) => [p[1], p[2]]));
+      const last = shown[shown.length - 1] || l.pts[0];
+      l.dot.setLatLng([last[1], last[2]]);
+    }
+    const s = Math.max(0, Math.round(t - start));
+    $('clock').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  const seek = $('seek');
+  const at = () => start + (end - start) * seek.value / 1000;
+  seek.oninput = () => { playing = false; $('play').textContent = 'Lejátszás'; render(at()); };
+  let playing = false;
+  $('play').onclick = () => {
+    playing = !playing;
+    $('play').textContent = playing ? 'Szünet' : 'Lejátszás';
+    if (playing && +seek.value >= 1000) seek.value = 0;
+  };
+  // 60× speed: one real second = one game minute.
+  setInterval(() => {
+    if (!playing) return;
+    seek.value = Math.min(1000, +seek.value + 1000 * 12 / Math.max(1, end - start));
+    render(at());
+    if (+seek.value >= 1000) { playing = false; $('play').textContent = 'Lejátszás'; }
+  }, 200);
+  render(end);
+}
+</script>
+</body>
+</html>

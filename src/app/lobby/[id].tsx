@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { GameMap } from '../../components/GameMap';
 import { Btn, C, FONT, ui } from '../../components/ui';
+import { inviteUrl } from '../../lib/env';
 import { huError } from '../../lib/errors';
 import { useGame, usePlayers, usePoints, useUserId } from '../../lib/hooks';
 import { ITEM_KINDS, ITEMS } from '../../lib/items';
@@ -81,6 +82,14 @@ export default function Lobby() {
     <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={ui.screen}>
       <Text style={[ui.stamp, { color: C.muted }]}>Ügyszám – ezzel csatlakoznak a többiek</Text>
       <Text selectable style={{ fontSize: 44, fontFamily: FONT, letterSpacing: 8, color: C.gold }}>{game.code}</Text>
+      <Btn
+        title="Meghívás linkkel"
+        onPress={() =>
+          Share.share({
+            message: `🕵️ Mr. X – városi hajsza. Csatlakozz az ügyhöz: ${inviteUrl(game.code)}\n(Kód: ${game.code})`,
+          })
+        }
+      />
       <Text style={ui.p}>
         Játékosok ({players.length}/{cfg.max_players as number})
         {isHost ? ' – koppints valakire, hogy ő legyen Mr. X' : ''}
