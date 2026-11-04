@@ -12,6 +12,15 @@ const MESSAGES: Record<string, string> = {
   point_not_found: 'Nincs ilyen pont.',
   not_mrx: 'Ezt csak Mr. X teheti meg.',
   game_not_running: 'A játék nem fut.',
+  game_not_finished: 'A játék még nem ért véget.',
+  out_of_bounds: 'Pályán kívül nem vehetsz fel tárgyat.',
+  point_cooldown: 'Ez a pont még töltődik.',
+  inventory_full: 'Egyszerre legfeljebb 2 tárgyad lehet.',
+  no_position: 'Még nincs friss GPS-pozíciód.',
+  too_far: 'Túl messze vagy a ponttól (25 m-en belül kell lenned).',
+  item_not_found: 'Ez a tárgy már nem használható.',
+  head_start: 'Az előny alatt nem használhatsz tárgyat.',
+  decoy_too_far: 'A csali legfeljebb 300 m-re lehet tőled.',
   overpass_: 'Az OpenStreetMap-szolgáltatás most nem érhető el, próbáld újra később.',
 };
 

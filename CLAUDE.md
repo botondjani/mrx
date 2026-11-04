@@ -45,7 +45,28 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
   Mr. X koordináta csak felfedésként; Mr. X detektív-koordinátát csak pillanatképként kap).
 - `overpass_probe` Edge Function: kivezetett diagnosztika (410-et ad), a dashboardon törölhető.
 
+### 3. fázis
+- Power-upok: `pickup_point` (szerver ellenőrzi: 25 m a szerver szerinti élő pozíciótól, pont-cooldown,
+  max 2 tárgy, kint lévő detektív nem vehet fel), `use_item`. Radar = azonnali felfedés; Nyomkövető =
+  `tracker_until`, Mr. X minden jelentése `tracker` felfedés; Csali = `decoy_lat/lng` (300 m), a következő
+  scheduled/radar felfedés ezt mutatja ugyanazzal a `kind`-dal (a detektív nem tudja megkülönböztetni);
+  Köd = `fog_pending`, a következő scheduled/radar felfedés elmarad (`reveal_fogged` esemény).
+- GPS-szűrés a szerveren: `gps_max_accuracy_m` (50) és ugrásszűrés `gps_max_speed_kmh` (150) az utolsó
+  elfogadott pozícióhoz képest (önjavító: a megengedett táv az eltelt idővel nő). Válasz: `gps_filtered`.
+- `process_report` a `default_game_config() || config` összevonással olvassa a beállításokat, így az új
+  kulcsok régi játékoknál is működnek (nem kell meglévő sorokat módosítani).
+- Statisztika `game_stats`, visszajátszás `game_replay` (5 s-os mintavétel), `save_replay` (csak host),
+  csak befejezett játéknál és csak tagoknak.
+- Törlés: `purge_positions()` pg_cron-nal óránként (`17 * * * *`): `position_retention_h` után a
+  pozíciók/felfedések/pillanatképek/események törlődnek, kivéve `replay_saved`; félbehagyott játék 24 h után.
+- Kliens: „Nincs kapcsolat” sáv (30 s sikertelen küldés), akkumulátormérés (indulás → játék vége, a Naplóban
+  5 percenként), `TELEPITES.md` a barátoknak.
+- A Supabase MCP `apply_migration` jóváhagyást kér adatmódosító/törlő utasításnál, ami a felhasználónál nem
+  jelent meg → a migrációkat úgy bontottuk, hogy ne módosítsanak meglévő sorokat.
+
 ## Állapot
 - 1. fázis: kód kész, szerveroldal ellenőrizve; valós eszközös teszt (2 telefon, lezárt képernyő) még hátra.
 - 2. fázis: kód kész, botokkal és láthatósági teszttel ellenőrizve; valós 2 telefonos teszt hátra.
+- 3. fázis: kód kész, `powerups-test.mjs` + korábbi tesztek zöldek; valós 3 telefonos, 30 perces teszt és
+  akkumérés hátra.
 - Ismert MVP-egyszerűsítés: a kliens Realtime eseményre újratölti a táblát (egyszerű, RLS-helyes; 12 játékosig elég).

@@ -4,11 +4,20 @@ import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { GameMap, type MapPlayer } from '../../components/GameMap';
 import { Btn, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
-import { useGame, useLivePositions, usePlayers, usePoints, useReveals, useSnapshots, useUserId } from '../../lib/hooks';
+import { useGame, useItems, useLivePositions, usePlayers, usePoints, useReveals, useSnapshots, useUserId } from '../../lib/hooks';
+import { distanceM } from '../../lib/geo';
 import { supabase } from '../../lib/supabase';
-import { startTracking, stopTracking } from '../../lib/tracking';
+import { getLastOkAt, startTracking, stopTracking } from '../../lib/tracking';
 
 type Candidate = { player_id: string; name: string; nearby: boolean };
+
+const ITEM_LABEL = { radar: 'Radar', tracker: 'Nyomkövető', decoy: 'Csali', fog: 'Köd' } as const;
+const ITEM_HELP = {
+  radar: 'Mr. X azonnal felfedődik.',
+  tracker: 'Mr. X 60 másodpercig élőben látszik.',
+  decoy: 'A következő felfedés egy általad kijelölt hamis pontot mutat (300 m-en belül).',
+  fog: 'A következő felfedés kimarad.',
+} as const;
 
 const mmss = (ms: number) => {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -23,6 +32,9 @@ export default function GameScreen() {
   const reveals = useReveals(id);
   const snapshots = useSnapshots(id); // RLS: Mr. X's periodic view of the detectives
   const points = usePoints(id);
+  const items = useItems(id).filter((i) => !i.used_at);
+  const [decoyItem, setDecoyItem] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const userId = useUserId();
   const [now, setNow] = useState(Date.now());
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
@@ -54,6 +66,13 @@ export default function GameScreen() {
   const inHeadStart = now < headStartEnd;
   const remaining = new Date(game.ends_at).getTime() - now;
 
+  const myLive = live.find((l) => l.player_id === me?.id);
+  const pickupRadius = cfg.pickup_radius_m as number;
+  const nearPoint = myLive
+    ? points.find((p) => (!p.active_after || new Date(p.active_after).getTime() <= now) && distanceM(myLive, p) <= pickupRadius)
+    : undefined;
+  const offlineFor = getLastOkAt() ? now - getLastOkAt() : 0;
+
   const nameOf = (playerId: string) => players.find((x) => x.id === playerId)?.name ?? '?';
   const mapPlayers: MapPlayer[] = live.map((l) => ({
     id: l.player_id, name: nameOf(l.player_id), lat: l.lat, lng: l.lng, isMe: l.player_id === me?.id,
@@ -82,6 +101,33 @@ export default function GameScreen() {
     ]);
   }
 
+  async function pickup(pointId: string) {
+    setError(null);
+    const { data, error } = await supabase.rpc('pickup_point', { p_point: pointId });
+    if (error) setError(huError(error));
+    else setInfo(`Felvetted: ${ITEM_LABEL[data as keyof typeof ITEM_LABEL]}`);
+  }
+
+  async function applyItem(itemId: string, kind: keyof typeof ITEM_LABEL, lngLat?: [number, number]) {
+    if (kind === 'decoy' && !lngLat) {
+      setDecoyItem(itemId);
+      setInfo('Koppints a térképre, ahová a csalit teszed (300 m-en belül).');
+      return;
+    }
+    setError(null);
+    const { error } = await supabase.rpc('use_item', { p_item: itemId, p_lat: lngLat?.[1] ?? null, p_lng: lngLat?.[0] ?? null });
+    setDecoyItem(null);
+    if (error) setError(huError(error));
+    else setInfo(`${ITEM_LABEL[kind]} használva. ${ITEM_HELP[kind]}`);
+  }
+
+  function confirmUse(itemId: string, kind: keyof typeof ITEM_LABEL) {
+    Alert.alert(ITEM_LABEL[kind], ITEM_HELP[kind], [
+      { text: 'Mégse', style: 'cancel' },
+      { text: 'Használom', onPress: () => applyItem(itemId, kind) },
+    ]);
+  }
+
   async function confirmCatch(c: Candidate) {
     const { error } = await supabase.rpc('confirm_catch', { p_game: id, p_detective: c.player_id });
     if (error) setError(huError(error));
@@ -100,7 +146,11 @@ export default function GameScreen() {
           radiusM={game.radius_m}
           players={mapPlayers}
           reveals={reveals}
-          points={points.map((p) => ({ id: p.id, label: p.name ?? '', lat: p.lat, lng: p.lng }))}
+          points={points.map((p) => {
+            const cooldown = p.active_after ? new Date(p.active_after).getTime() - now : 0;
+            return { id: p.id, label: cooldown > 0 ? mmss(cooldown) : (p.name ?? ''), lat: p.lat, lng: p.lng };
+          })}
+          onPress={decoyItem ? (lngLat) => applyItem(decoyItem, 'decoy', lngLat) : undefined}
         />
       </View>
       <View style={[ui.screen, { flex: 0 }]}>
@@ -109,7 +159,27 @@ export default function GameScreen() {
         {!isMrx && reveals.length ? (
           <Text style={ui.p}>Utolsó felfedés: {mmss(now - new Date(reveals[reveals.length - 1].revealed_at).getTime())} perce</Text>
         ) : null}
+        {offlineFor > 30_000 ? (
+          <Text style={[ui.error, { fontWeight: '700' }]}>Nincs kapcsolat – utolsó küldés {mmss(offlineFor)} perce</Text>
+        ) : null}
         {error ? <Text style={ui.error}>{error}</Text> : null}
+        {info ? <Text style={ui.p}>{info}</Text> : null}
+        {nearPoint && !candidates ? (
+          <Btn title={`Felvétel: ${nearPoint.name ?? 'power-up'}`} onPress={() => pickup(nearPoint.id)} />
+        ) : null}
+        {items.length && !candidates ? (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {items.map((i) => (
+              <View key={i.id} style={{ flex: 1 }}>
+                <Btn
+                  title={decoyItem === i.id ? 'Csali: koppints…' : ITEM_LABEL[i.kind]}
+                  variant="secondary"
+                  onPress={() => (decoyItem === i.id ? setDecoyItem(null) : confirmUse(i.id, i.kind))}
+                />
+              </View>
+            ))}
+          </View>
+        ) : null}
         {candidates ? (
           <View style={{ maxHeight: 220 }}>
             <Text style={ui.p}>Ki kapott el?</Text>

@@ -97,6 +97,13 @@ async function loop(b) {
   }
 }
 await Promise.all(bots.map(loop));
+// One more round so every bot collects its pending game_over event.
+for (const b of bots) {
+  const res = ok(await b.sb.functions.invoke("report_position", {
+    body: { game_id: game.id, locations: [{ ...positionOf(b), accuracy: 5, timestamp: Date.now() }] },
+  }));
+  for (const e of res.events) (events[`${b.name}:${e.kind}`] ??= 0, events[`${b.name}:${e.kind}`]++);
+}
 await sleep(2000);
 
 // Allowed sets, read by each client itself (RLS applies).

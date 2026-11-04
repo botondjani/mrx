@@ -35,8 +35,9 @@ npx eas-cli@latest build -p android --profile preview       # önálló APK, ezt
 npx eas-cli@latest build -p android --profile development   # dev build (Metro szerverrel, fejlesztéshez)
 ```
 
-A build végén kapott linket nyisd meg a telefonon, töltsd le és telepítsd az APK-t
-(engedélyezni kell az „ismeretlen forrásból” telepítést).
+A `preview` profil aláírt release APK-t készít. A build végén kapott linket nyisd meg a telefonon,
+töltsd le és telepítsd. Barátoknak szóló útmutató (ismeretlen forrás, Xiaomi/Samsung akkubeállítás):
+[TELEPITES.md](TELEPITES.md).
 
 ## Bot-szimulátor
 
@@ -55,6 +56,7 @@ npm run bots -- --create --lat 47.4979 --lng 19.0402 --n 5 --mrx 0 --duration 10
 npm run typecheck
 node --env-file=.env scripts/rls-test.mjs          # a detektív soha nem kapja meg Mr. X élő pozícióját
 node --env-file=.env scripts/visibility-test.mjs   # teljes rövid játék: Mr. X pozíciója csak felfedésként jut el
+node --env-file=.env scripts/powerups-test.mjs     # power-upok, GPS-szűrés, statisztika, visszajátszás
 ```
 
 ## Supabase

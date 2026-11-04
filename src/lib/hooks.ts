@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase, type DetectiveSnapshot, type Game, type LivePosition, type Player, type PointRow, type Reveal } from './supabase';
+import { supabase, type DetectiveSnapshot, type Game, type LivePosition, type Player, type Item, type PointRow, type Reveal } from './supabase';
 
 export function useUserId() {
   const [id, setId] = useState<string | null>(null);
@@ -42,3 +42,5 @@ export const useReveals = (gameId: string) =>
 export const useSnapshots = (gameId: string) =>
   useLiveQuery<DetectiveSnapshot[]>('detective_snapshots', 'game_id', gameId, false, 'taken_at') ?? [];
 export const usePoints = (gameId: string) => useLiveQuery<PointRow[]>('points', 'game_id', gameId, false) ?? [];
+// RLS: only my own items.
+export const useItems = (gameId: string) => useLiveQuery<Item[]>('items', 'game_id', gameId, false, 'picked_at') ?? [];

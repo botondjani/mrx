@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Battery from 'expo-battery';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { notifyEvent, type GameEvent } from './notifications';
@@ -14,6 +15,12 @@ let logBuffer: string[] | null = null;
 // (restarting location updates from the background is not allowed on Android 12+).
 let sendIntervalMs = 10_000;
 let lastSentAt = 0;
+let lastOkAt = 0;
+let lastBatteryLogAt = 0;
+
+/** Time of the last successful report (0 = none yet); the game screen shows an offline banner. */
+export const getLastOkAt = () => lastOkAt;
+export const BATTERY_START_KEY = 'tracking.batteryStart';
 
 /** Device-side log (survives restarts) to verify background reporting. */
 export async function appendLog(line: string) {
@@ -50,10 +57,17 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(TASK, async ({ 
     body: { game_id: gameId, locations },
   });
   if (fnError) return appendLog(`küldés sikertelen: ${fnError.message}`);
+  lastOkAt = Date.now();
   const acc = Math.round(locations[0].accuracy ?? -1);
   const events: GameEvent[] = res?.events ?? [];
   if (res?.next_interval_ms) sendIntervalMs = res.next_interval_ms;
-  await appendLog(`elküldve (±${acc} m)${events.length ? ' – ' + events.map((e) => e.kind).join(', ') : ''}`);
+  await appendLog(
+    `elküldve (±${acc} m)${res?.gps_filtered ? ' – pontatlan GPS, eldobva' : ''}${events.length ? ' – ' + events.map((e) => e.kind).join(', ') : ''}`,
+  );
+  if (Date.now() - lastBatteryLogAt > 5 * 60_000) {
+    lastBatteryLogAt = Date.now();
+    await appendLog(`akkumulátor: ${Math.round((await Battery.getBatteryLevelAsync()) * 100)}%`);
+  }
   for (const e of events) await notifyEvent(e);
   if (res?.game_status === 'finished') await stopTracking();
 });
@@ -63,6 +77,8 @@ export async function startTracking(gameId: string, gpsIntervalMs: number, repor
   if ((await AsyncStorage.getItem(GAME_KEY)) === gameId && (await Location.hasStartedLocationUpdatesAsync(TASK))) return;
   sendIntervalMs = reportIntervalMs;
   await AsyncStorage.setItem(GAME_KEY, gameId);
+  // Battery measurement for the end screen.
+  await AsyncStorage.setItem(BATTERY_START_KEY, JSON.stringify({ level: await Battery.getBatteryLevelAsync(), at: Date.now() }));
   if (await Location.hasStartedLocationUpdatesAsync(TASK)) await Location.stopLocationUpdatesAsync(TASK);
   await Location.startLocationUpdatesAsync(TASK, {
     accuracy: Location.Accuracy.High,
