@@ -22,7 +22,8 @@ export type MapPoint = { id: string; label: string; lat: number; lng: number };
 
 type Props = {
   center: { lat: number; lng: number };
-  radiusM?: number | null;
+  radiusM?: number | null; // original area (power-ups stay here)
+  zoneRadiusM?: number | null; // current, shrinking zone (defaults to radiusM)
   players?: MapPlayer[];
   reveals?: MapReveal[]; // oldest first; the last one pulses
   points?: MapPoint[];
@@ -58,7 +59,10 @@ const HTML = `<!doctype html><html><head>
   const label = (m, t) => t && m.bindTooltip(t, { permanent: true, direction: 'bottom', className: 'lbl', offset: [0, 6] });
   window.setState = (s) => {
     layer.clearLayers();
-    if (s.radiusM) L.circle([s.center.lat, s.center.lng], { radius: s.radiusM, color: '${C.gold}', weight: 2,
+    const zone = s.zoneRadiusM || s.radiusM;
+    if (s.radiusM && zone < s.radiusM - 1) L.circle([s.center.lat, s.center.lng], { radius: s.radiusM, color: '${C.muted}',
+      weight: 1, dashArray: '2 6', fill: false, interactive: false }).addTo(layer);
+    if (zone) L.circle([s.center.lat, s.center.lng], { radius: zone, color: '${C.gold}', weight: 2,
       dashArray: '6 4', fillColor: '${C.gold}', fillOpacity: 0.06, interactive: false }).addTo(layer);
     // First render: fit the whole area.
     if (!centered) {
@@ -90,11 +94,18 @@ const HTML = `<!doctype html><html><head>
   window.ReactNativeWebView.postMessage('ready');
 </script></body></html>`;
 
-export function GameMap({ center, radiusM, players = [], reveals = [], points = [], onPress }: Props) {
+export function GameMap({ center, radiusM, zoneRadiusM, players = [], reveals = [], points = [], onPress }: Props) {
   const web = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   // Re-injected only when the serialized state actually changes.
-  const state = JSON.stringify({ center, radiusM: radiusM ?? null, players, reveals, points });
+  const state = JSON.stringify({
+    center,
+    radiusM: radiusM ?? null,
+    zoneRadiusM: zoneRadiusM ? Math.round(zoneRadiusM / 10) * 10 : null, // 10 m steps: fewer redraws
+    players,
+    reveals,
+    points,
+  });
 
   useEffect(() => {
     if (ready) web.current?.injectJavaScript(`window.setState(${state});true;`);

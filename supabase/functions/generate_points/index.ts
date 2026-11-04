@@ -3,6 +3,8 @@
 // Public Overpass servers reject cloud IPs (406/timeouts from Supabase Edge), so the host's
 // phone runs the Overpass query: on a cache miss this returns { error: "need_overpass", query }
 // and the client retries with { elements }. Results are cached per area for CACHE_DAYS.
+// If no Overpass server answers the phone either, the client sends { random: true } and the
+// points are random "hideouts" inside the area (same spacing rules).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const admin = createClient(
@@ -14,7 +16,7 @@ const CACHE_DAYS = 7;
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
-type Candidate = { osm_id: string; name: string | null; kind: string; lat: number; lng: number };
+type Candidate = { osm_id: string | null; name: string | null; kind: string; lat: number; lng: number };
 
 function distM(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const r = Math.PI / 180;
@@ -48,7 +50,7 @@ Deno.serve(async (req) => {
   const userId = claims?.claims?.sub;
   if (!userId) return json({ error: "unauthorized" }, 401);
 
-  const { game_id, elements: supplied } = await req.json().catch(() => ({}));
+  const { game_id, elements: supplied, random } = await req.json().catch(() => ({}));
   const { data: game } = await admin.from("games").select("*").eq("id", game_id).maybeSingle();
   if (!game || game.host_user_id !== userId) return json({ error: "not_host" }, 403);
   if (game.status !== "lobby") return json({ error: "game_already_started" }, 409);
@@ -58,7 +60,17 @@ Deno.serve(async (req) => {
   const center = { lat: game.center_lat, lng: game.center_lng };
   const key = `${center.lat.toFixed(4)},${center.lng.toFixed(4)},${game.radius_m}`;
   let elements = supplied;
-  if (Array.isArray(elements)) {
+  if (random) {
+    // Uniform random points in the inner 90 % of the circle.
+    elements = Array.from({ length: 400 }, (_, i) => {
+      const r = game.radius_m * 0.9 * Math.sqrt(Math.random()), a = Math.random() * 2 * Math.PI;
+      return {
+        type: "random", id: i, tags: {},
+        lat: center.lat + (r * Math.cos(a)) / 111320,
+        lon: center.lng + (r * Math.sin(a)) / (111320 * Math.cos((center.lat * Math.PI) / 180)),
+      };
+    });
+  } else if (Array.isArray(elements)) {
     if (elements.length > 5000) return json({ error: "too_many_elements" }, 413);
     await admin.from("overpass_cache").upsert({ key, elements, fetched_at: new Date().toISOString() });
   } else {
@@ -71,9 +83,9 @@ Deno.serve(async (req) => {
 
   // deno-lint-ignore no-explicit-any
   const candidates: Candidate[] = elements.map((e: any) => ({
-    osm_id: `${e.type}/${e.id}`,
+    osm_id: random ? null : `${e.type}/${e.id}`,
     name: e.tags?.name ?? null,
-    kind: kindOf(e.tags ?? {}),
+    kind: random ? "hideout" : kindOf(e.tags ?? {}),
     lat: e.lat ?? e.center?.lat,
     lng: e.lon ?? e.center?.lon,
   })).filter((c: Candidate) => Number.isFinite(c.lat) && distM(center, c) <= game.radius_m * 0.9);
@@ -86,6 +98,8 @@ Deno.serve(async (req) => {
     if (picked.length >= cfg.points_max) break;
     if (picked.every((p) => distM(p, c) >= cfg.point_min_spacing_m)) picked.push(c);
   }
+
+  if (random) picked.forEach((p, i) => (p.name = `Rejtekhely ${i + 1}`));
 
   await admin.from("points").delete().eq("game_id", game_id);
   if (picked.length) {

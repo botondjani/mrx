@@ -5,7 +5,7 @@ import { GameMap, type MapPlayer } from '../../components/GameMap';
 import { Btn, C, FONT, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
 import { useGame, useItems, useLivePositions, usePlayers, usePoints, useReveals, useSnapshots, useUserId } from '../../lib/hooks';
-import { distanceM } from '../../lib/geo';
+import { distanceM, zoneRadius } from '../../lib/geo';
 import { supabase } from '../../lib/supabase';
 import { getLastOkAt, startTracking, stopTracking } from '../../lib/tracking';
 
@@ -137,6 +137,8 @@ export default function GameScreen() {
   let banner: string;
   if (inHeadStart) banner = isMrx ? `Előny: ${mmss(headStartEnd - now)} – tűnj el!` : `Várj a kezdőpontnál: ${mmss(headStartEnd - now)}`;
   else banner = `Hátralévő idő: ${mmss(remaining)}`;
+  const zone = zoneRadius(game, now);
+  if (zone && game.radius_m && zone < game.radius_m - 1) banner += ` · kör: ${Math.round(zone)} m`;
 
   return (
     <View style={{ flex: 1 }}>
@@ -144,6 +146,7 @@ export default function GameScreen() {
         <GameMap
           center={{ lat: game.center_lat, lng: game.center_lng }}
           radiusM={game.radius_m}
+          zoneRadiusM={zone}
           players={mapPlayers}
           reveals={reveals}
           points={points.map((p) => {

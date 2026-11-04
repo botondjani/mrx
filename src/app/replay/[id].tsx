@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 import { GameMap, type MapPlayer } from '../../components/GameMap';
 import { Btn, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
+import { zoneRadius } from '../../lib/geo';
 import { useGame, usePlayers, useUserId } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 
@@ -76,7 +77,7 @@ export default function ReplayScreen() {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
-        <GameMap center={{ lat: game.center_lat, lng: game.center_lng }} radiusM={game.radius_m} players={mapPlayers} reveals={reveals} />
+        <GameMap center={{ lat: game.center_lat, lng: game.center_lng }} radiusM={game.radius_m} zoneRadiusM={zoneRadius(game, now * 1000)} players={mapPlayers} reveals={reveals} />
       </View>
       <View style={[ui.screen, { flex: 0 }]}>
         <Text style={ui.p}>

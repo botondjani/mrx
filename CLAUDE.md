@@ -72,6 +72,14 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
 - `app.json` version 0.2.0 (új natív modul → új runtime; a 0.1.0-s APK-k nem kapnak több frissítést).
 - Dizájn: noir téma (`src/components/ui.tsx` `C` színek, Special Elite betű), Mr. X = bíbor, detektív = arany.
 
+### Szűkülő kör, pontok (2026-11-04)
+- `zone_final_pct` (100 = nincs, 75/50/25 a lobbyban): a kör lineárisan szűkül az előny végétől a játék végéig,
+  `public.zone_radius(game, t)` (szerver) = `zoneRadius()` (`src/lib/geo.ts`, kliens). A pályahatár-ellenőrzés
+  és a büntetés az aktuális kört nézi; a power-up pontok az eredeti körben maradnak (térképen halvány eredeti kör).
+- `generate_points`: a telefon több Overpass-tükröt próbál (User-Agenttel, 20 s timeout); ha egyik sem válaszol,
+  `{ random: true }` → véletlen „Rejtekhely N” pontok a körben (≥150 m, max 12).
+- Lobby: előnézeti térkép (kör + pontok), görgethető.
+
 ### Gyors frissítés (EAS Update)
 - `expo-updates`, `runtimeVersion: appVersion`, csatorna: `preview` (eas.json). Csak JS-változás:
   `npx eas-cli@latest update --channel preview --message "..."` → a telefonok induláskor letöltik.

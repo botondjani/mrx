@@ -8,7 +8,7 @@ import { useGame, usePoints } from '../../lib/hooks';
 import { generatePoints } from '../../lib/points';
 import { supabase } from '../../lib/supabase';
 
-const KIND = { square: 'tér', park: 'park', stop: 'megálló', statue: 'szobor/emlékmű' } as Record<string, string>;
+const KIND = { square: 'tér', park: 'park', stop: 'megálló', statue: 'szobor/emlékmű', hideout: 'rejtekhely' } as Record<string, string>;
 
 export default function Points() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,10 +19,16 @@ export default function Points() {
 
   async function generate() {
     setBusy(true);
-    setMsg('Pontok keresése az OpenStreetMap-ben…');
+    setMsg('Helyek keresése az OpenStreetMap-ben… (max. ~1 perc)');
     try {
       const data = await generatePoints(id);
-      setMsg(data.enough ? `${data.count} pont generálva.` : `Csak ${data.count} pontot találtam – próbálj nagyobb pályát.`);
+      setMsg(
+        data.source === 'random'
+          ? `Az OpenStreetMap-kereső nem válaszolt, ezért ${data.count} véletlen rejtekhelyet sorsoltam a pályán.`
+          : data.enough
+            ? `${data.count} pont generálva valódi helyekből (terek, szobrok, megállók, parkok).`
+            : `Csak ${data.count} helyet találtam – próbálj nagyobb pályát.`,
+      );
     } catch (e) {
       setMsg(huError(e));
     } finally {
