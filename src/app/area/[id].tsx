@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { GameMap } from '../../components/GameMap';
-import { Btn, ui } from '../../components/ui';
+import { Btn, C, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
 import { useGame } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -20,11 +20,15 @@ export default function Area() {
     if (!game || center) return;
     setRadius(game.radius_m ?? (game.config.radius_default_m as number));
     if (game.center_lat != null && game.center_lng != null) setCenter({ lat: game.center_lat, lng: game.center_lng });
-    else
-      Location.getCurrentPositionAsync({}).then(
-        (p) => setCenter({ lat: p.coords.latitude, lng: p.coords.longitude }),
-        () => setCenter({ lat: 47.4979, lng: 19.0402 }), // Budapest fallback
-      );
+    else {
+      // Last known fix first (instant); fresh fix may take long indoors. Budapest as fallback.
+      const fallback = setTimeout(() => setCenter((c) => c ?? { lat: 47.4979, lng: 19.0402 }), 5000);
+      Location.getLastKnownPositionAsync()
+        .then((p) => p ?? Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
+        .then((p) => setCenter((c) => c ?? { lat: p.coords.latitude, lng: p.coords.longitude }))
+        .catch(() => {});
+      return () => clearTimeout(fallback);
+    }
   }, [game, center]);
 
   async function save() {
@@ -51,6 +55,9 @@ export default function Area() {
           step={100}
           value={radius}
           onValueChange={setRadius}
+          minimumTrackTintColor={C.gold}
+          maximumTrackTintColor={C.line}
+          thumbTintColor={C.gold}
         />
         <Btn title="Mentés" onPress={save} />
         {error ? <Text style={ui.error}>{error}</Text> : null}

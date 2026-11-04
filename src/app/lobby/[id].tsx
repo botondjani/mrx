@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, Switch, Text, View } from 'react-native';
-import { Btn, ui } from '../../components/ui';
+import { Btn, C, FONT, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
 import { useGame, usePlayers, usePoints, useUserId } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -32,8 +32,8 @@ export default function Lobby() {
 
   return (
     <View style={ui.screen}>
-      <Text style={ui.p}>Csatlakozási kód</Text>
-      <Text selectable style={{ fontSize: 40, fontWeight: '800', letterSpacing: 6 }}>{game.code}</Text>
+      <Text style={[ui.stamp, { color: C.muted }]}>Ügyszám – ezzel csatlakoznak a többiek</Text>
+      <Text selectable style={{ fontSize: 44, fontFamily: FONT, letterSpacing: 8, color: C.gold }}>{game.code}</Text>
       <Text style={ui.p}>
         Játékosok ({players.length}/{game.config.max_players as number})
         {isHost ? ' – koppints valakire, hogy ő legyen Mr. X' : ''}
@@ -45,13 +45,13 @@ export default function Lobby() {
           <Pressable
             disabled={!isHost}
             onPress={() => call('assign_roles', { p_game: id, p_mrx_player: item.id })}
-            style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee', flexDirection: 'row' }}
+            style={ui.row}
           >
             <Text style={[ui.p, { flex: 1, fontWeight: item.user_id === userId ? '700' : '400' }]}>
               {item.name}
               {item.is_host ? ' (házigazda)' : ''}
             </Text>
-            <Text style={[ui.p, item.role === 'mrx' && { color: '#c0392b', fontWeight: '700' }]}>
+            <Text style={[ui.stamp, { color: item.role === 'mrx' ? C.crimson : C.gold }]}>
               {item.role ? ROLE_LABEL[item.role] : '–'}
             </Text>
           </Pressable>
@@ -70,9 +70,9 @@ export default function Lobby() {
               <Pressable
                 key={m}
                 onPress={() => call('set_options', { p_game: id, p_options: { duration_min: m } })}
-                style={{ padding: 8, borderRadius: 8, backgroundColor: game.config.duration_min === m ? '#1e6bd6' : '#e8f0fc' }}
+                style={{ padding: 8, borderRadius: 6, borderWidth: 1, borderColor: C.gold, backgroundColor: game.config.duration_min === m ? C.gold : 'transparent' }}
               >
-                <Text style={{ color: game.config.duration_min === m ? '#fff' : '#1e6bd6', fontWeight: '600' }}>{m} perc</Text>
+                <Text style={{ color: game.config.duration_min === m ? C.bg : C.gold, fontFamily: FONT }}>{m} perc</Text>
               </Pressable>
             ))}
           </View>

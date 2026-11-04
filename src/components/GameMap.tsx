@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, type NativeSyntheticEvent } from 'react-native';
 import { MAP_STYLE_URL } from '../lib/env';
 import { circlePolygon } from '../lib/geo';
+import { C } from './ui';
 
 export type MapPlayer = { id: string; name: string; lat: number; lng: number; isMe: boolean; stale?: boolean };
 export type MapReveal = { lat: number; lng: number; heading: number | null };
@@ -59,6 +60,8 @@ export function GameMap({ center, radiusM, players = [], reveals = [], points = 
 
   return (
     <Map
+      // GLSurfaceView (v11 default) renders black inside native-stack screens on Android.
+      androidView="texture"
       style={StyleSheet.absoluteFill}
       mapStyle={MAP_STYLE_URL}
       onPress={onPress ? (e: NativeSyntheticEvent<PressEvent>) => onPress(e.nativeEvent.lngLat) : undefined}
@@ -66,17 +69,17 @@ export function GameMap({ center, radiusM, players = [], reveals = [], points = 
       <Camera initialViewState={{ center: [center.lng, center.lat], zoom: 14 }} />
       {radiusM ? (
         <GeoJSONSource id="area" data={circlePolygon(center.lat, center.lng, radiusM)}>
-          <Layer id="area-fill" type="fill" paint={{ 'fill-color': '#1e6bd6', 'fill-opacity': 0.08 }} />
-          <Layer id="area-line" type="line" paint={{ 'line-color': '#1e6bd6', 'line-width': 2 }} />
+          <Layer id="area-fill" type="fill" paint={{ 'fill-color': C.gold, 'fill-opacity': 0.06 }} />
+          <Layer id="area-line" type="line" paint={{ 'line-color': C.gold, 'line-width': 2, 'line-dasharray': [3, 2] }} />
         </GeoJSONSource>
       ) : null}
       <GeoJSONSource id="points" data={pointFc}>
-        <Layer id="points-dot" type="circle" paint={{ 'circle-radius': 7, 'circle-color': '#f2b705', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }} />
+        <Layer id="points-dot" type="circle" paint={{ 'circle-radius': 7, 'circle-color': C.ink, 'circle-stroke-width': 2, 'circle-stroke-color': C.gold }} />
         <Layer
           id="points-label"
           type="symbol"
           layout={{ 'text-field': ['get', 'label'], 'text-size': 11, 'text-offset': [0, 1.2], 'text-anchor': 'top' }}
-          paint={{ 'text-halo-color': '#fff', 'text-halo-width': 1.5 }}
+          paint={{ 'text-color': C.ink, 'text-halo-color': C.bg, 'text-halo-width': 1.5 }}
         />
       </GeoJSONSource>
       {reveals.length > 1 ? (
@@ -84,21 +87,21 @@ export function GameMap({ center, radiusM, players = [], reveals = [], points = 
           id="reveal-trail-line"
           data={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: reveals.map((r) => [r.lng, r.lat]) } }}
         >
-          <Layer id="reveal-trail-line" type="line" paint={{ 'line-color': '#c0392b', 'line-opacity': 0.35, 'line-width': 2, 'line-dasharray': [2, 2] }} />
+          <Layer id="reveal-trail-line" type="line" paint={{ 'line-color': C.crimson, 'line-opacity': 0.45, 'line-width': 2, 'line-dasharray': [2, 2] }} />
         </GeoJSONSource>
       ) : null}
       <GeoJSONSource id="reveal-trail" data={trailFc}>
-        <Layer id="reveal-trail-dot" type="circle" paint={{ 'circle-radius': 6, 'circle-color': '#c0392b', 'circle-opacity': ['get', 'o'] }} />
+        <Layer id="reveal-trail-dot" type="circle" paint={{ 'circle-radius': 6, 'circle-color': C.crimson, 'circle-opacity': ['get', 'o'] }} />
       </GeoJSONSource>
       {lastLine ? (
         <GeoJSONSource id="reveal-heading" data={lastLine}>
-          <Layer id="reveal-heading" type="line" paint={{ 'line-color': '#c0392b', 'line-width': 4 }} />
+          <Layer id="reveal-heading" type="line" paint={{ 'line-color': C.crimson, 'line-width': 4 }} />
         </GeoJSONSource>
       ) : null}
       {last ? (
         <GeoJSONSource id="reveal-last" data={pointFeature(last.lng, last.lat)}>
-          <Layer id="reveal-halo" type="circle" paint={{ 'circle-radius': pulse ? 26 : 14, 'circle-color': '#c0392b', 'circle-opacity': 0.25 }} />
-          <Layer id="reveal-dot" type="circle" paint={{ 'circle-radius': 9, 'circle-color': '#c0392b', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }} />
+          <Layer id="reveal-halo" type="circle" paint={{ 'circle-radius': pulse ? 26 : 14, 'circle-color': C.crimson, 'circle-opacity': 0.3 }} />
+          <Layer id="reveal-dot" type="circle" paint={{ 'circle-radius': 9, 'circle-color': C.crimson, 'circle-stroke-width': 2, 'circle-stroke-color': C.ink }} />
         </GeoJSONSource>
       ) : null}
       <GeoJSONSource id="players" data={playerFc}>
@@ -107,17 +110,17 @@ export function GameMap({ center, radiusM, players = [], reveals = [], points = 
           type="circle"
           paint={{
             'circle-radius': 8,
-            'circle-color': ['case', ['get', 'me'], '#1e6bd6', '#2a9d58'],
+            'circle-color': ['case', ['get', 'me'], C.steel, C.gold],
             'circle-opacity': ['case', ['get', 'stale'], 0.5, 1],
             'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff',
+            'circle-stroke-color': C.bg,
           }}
         />
         <Layer
           id="players-label"
           type="symbol"
           layout={{ 'text-field': ['get', 'name'], 'text-size': 12, 'text-offset': [0, 1.4], 'text-anchor': 'top' }}
-          paint={{ 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }}
+          paint={{ 'text-color': C.ink, 'text-halo-color': C.bg, 'text-halo-width': 1.5 }}
         />
       </GeoJSONSource>
     </Map>

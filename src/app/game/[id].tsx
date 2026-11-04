@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { GameMap, type MapPlayer } from '../../components/GameMap';
-import { Btn, ui } from '../../components/ui';
+import { Btn, C, FONT, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
 import { useGame, useItems, useLivePositions, usePlayers, usePoints, useReveals, useSnapshots, useUserId } from '../../lib/hooks';
 import { distanceM } from '../../lib/geo';
@@ -154,8 +154,11 @@ export default function GameScreen() {
         />
       </View>
       <View style={[ui.screen, { flex: 0 }]}>
-        <Text style={ui.h1}>{isMrx ? 'Te vagy Mr. X' : 'Detektív vagy'}</Text>
-        <Text style={[ui.p, { fontWeight: '700' }]}>{banner}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <Text style={[ui.stamp, { color: isMrx ? C.crimson : C.gold }]}>{isMrx ? '◆ Te vagy Mr. X' : '★ Nyomozó'}</Text>
+          <Text style={{ fontFamily: FONT, fontSize: 28, color: C.ink }}>{mmss(inHeadStart ? headStartEnd - now : remaining)}</Text>
+        </View>
+        <Text style={ui.muted}>{banner}</Text>
         {!isMrx && reveals.length ? (
           <Text style={ui.p}>Utolsó felfedés: {mmss(now - new Date(reveals[reveals.length - 1].revealed_at).getTime())} perce</Text>
         ) : null}
@@ -187,7 +190,7 @@ export default function GameScreen() {
               data={candidates}
               keyExtractor={(c) => c.player_id}
               renderItem={({ item }) => (
-                <Pressable onPress={() => confirmCatch(item)} style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee' }}>
+                <Pressable onPress={() => confirmCatch(item)} style={ui.row}>
                   <Text style={[ui.p, item.nearby && { fontWeight: '700' }]}>
                     {item.name}
                     {item.nearby ? ' (közel)' : ''}

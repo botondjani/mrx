@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Text } from 'react-native';
-import { Btn, ui } from '../components/ui';
+import { Btn, C, ui } from '../components/ui';
 import { readLog } from '../lib/tracking';
 
 export default function Log() {
@@ -13,7 +13,7 @@ export default function Log() {
 
   return (
     <FlatList
-      style={{ backgroundColor: '#fff' }}
+      style={{ backgroundColor: C.bg }}
       contentContainerStyle={{ padding: 16, gap: 4 }}
       ListHeaderComponent={<Btn title="Frissítés" variant="secondary" onPress={load} />}
       data={lines}

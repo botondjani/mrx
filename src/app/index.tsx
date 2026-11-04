@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
-import { Btn, ui } from '../components/ui';
+import { Btn, C, FONT, ui } from '../components/ui';
 import { huError } from '../lib/errors';
 import { nextPermissionStep } from '../lib/permissions';
 import { supabase, type Game } from '../lib/supabase';
@@ -40,13 +40,26 @@ export default function Home() {
   }
 
   return (
-    <View style={ui.screen}>
-      <Text style={ui.h1}>Városi bújócska</Text>
-      <Text style={ui.p}>Neved</Text>
-      <TextInput style={ui.input} value={name} onChangeText={setName} maxLength={24} placeholder="pl. Bence" />
-      <Btn title="Új játék létrehozása" onPress={() => enter('create_game')} disabled={busy} />
+    <View style={[ui.screen, { paddingTop: 72 }]}>
+      <View style={{ alignItems: 'center', marginBottom: 24 }}>
+        <Text style={{ fontSize: 64 }}>🕵️</Text>
+        <Text style={{ fontFamily: FONT, fontSize: 56, color: C.ink, letterSpacing: 4 }}>
+          MR. <Text style={{ color: C.crimson }}>X</Text>
+        </Text>
+        <Text style={[ui.stamp, { color: C.gold }]}>Városi hajsza · szigorúan titkos</Text>
+      </View>
+      <Text style={ui.muted}>Fedőneved</Text>
+      <TextInput
+        style={ui.input}
+        value={name}
+        onChangeText={setName}
+        maxLength={24}
+        placeholder="pl. Bence"
+        placeholderTextColor={C.muted}
+      />
+      <Btn title="Új ügy nyitása" onPress={() => enter('create_game')} disabled={busy} />
       <View style={{ height: 16 }} />
-      <Text style={ui.p}>Csatlakozás kóddal</Text>
+      <Text style={ui.muted}>Ügyszám (csatlakozási kód)</Text>
       <TextInput
         style={ui.input}
         value={code}
@@ -54,6 +67,7 @@ export default function Home() {
         autoCapitalize="characters"
         maxLength={6}
         placeholder="ABC123"
+        placeholderTextColor={C.muted}
       />
       <Btn title="Csatlakozás" variant="secondary" onPress={() => enter('join_game')} disabled={busy} />
       {error ? <Text style={ui.error}>{error}</Text> : null}

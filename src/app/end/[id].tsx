@@ -3,7 +3,7 @@ import * as Battery from 'expo-battery';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { Btn, ui } from '../../components/ui';
+import { Btn, C, FONT, ui } from '../../components/ui';
 import { useGame, usePlayers, useUserId } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { BATTERY_START_KEY } from '../../lib/tracking';
@@ -48,8 +48,13 @@ export default function End() {
   const iWon = me && (game.winner === 'mrx') === (me.role === 'mrx');
 
   return (
-    <ScrollView style={{ backgroundColor: '#fff' }} contentContainerStyle={[ui.screen, { flexGrow: 1 }]}>
-      <Text style={[ui.h1, { fontSize: 32, textAlign: 'center' }]}>{iWon ? 'Nyertél!' : 'Vesztettél'}</Text>
+    <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={[ui.screen, { flexGrow: 1 }]}>
+      <Text style={[ui.stamp, { textAlign: 'center', color: game.winner === 'mrx' ? C.crimson : C.gold }]}>
+        {game.winner === 'mrx' ? 'Az ügy lezárva – a tettes megszökött' : 'Az ügy lezárva – tettes elfogva'}
+      </Text>
+      <Text style={{ fontFamily: FONT, fontSize: 40, textAlign: 'center', color: iWon ? C.gold : C.crimson }}>
+        {iWon ? 'Nyertél!' : 'Vesztettél'}
+      </Text>
       <Text style={[ui.p, { textAlign: 'center' }]}>
         {game.winner === 'mrx'
           ? `${mrx?.name ?? 'Mr. X'} (Mr. X) kibírta a játékidő végéig.`
