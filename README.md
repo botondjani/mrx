@@ -48,6 +48,16 @@ npx eas-cli@latest update --channel preview --message "javítás leírása"
 
 Natív változásnál (új natív csomag, engedély, `app.json` plugin) emeld a `version`-t az `app.json`-ban és buildelj új APK-t.
 
+## Weboldal (meghívó + nyilvános visszajátszás)
+
+`site/index.html` statikus oldal: `?join=KÓD` (meghívó) és `?replay=KÓD` (nyilvános visszajátszás).
+Közzététel EAS Hostingra (az `__APK_URL__` helyére a legfrissebb APK linkje kerül):
+
+```bash
+sed "s#__APK_URL__#<apk link>#" site/index.html > /tmp/site/index.html
+npx eas-cli@latest deploy --export-dir /tmp/site --prod --dev-domain mrx-ugy
+```
+
 ## Bot-szimulátor
 
 ```bash
@@ -66,6 +76,7 @@ npm run typecheck
 node --env-file=.env scripts/rls-test.mjs          # a detektív soha nem kapja meg Mr. X élő pozícióját
 node --env-file=.env scripts/visibility-test.mjs   # teljes rövid játék: Mr. X pozíciója csak felfedésként jut el
 node --env-file=.env scripts/powerups-test.mjs     # power-upok, GPS-szűrés, statisztika, visszajátszás
+node --env-file=.env scripts/story-test.mjs        # ügyirat/címek, visszavágó, nyilvános visszajátszás
 ```
 
 ## Supabase

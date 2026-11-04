@@ -108,6 +108,24 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
 - `powerups_enabled` (alap: igen): kikapcsolva `generate_points` minden pontot töröl, `pickup_point` → `powerups_disabled`.
 - Lobby-beállítások felugró `Modal`-ban; pontszám és power-up kapcsoló változásakor a pontok azonnal újrasorsolódnak.
 
+### Megosztás / viralitás (2026-11-04, `20261104000010…`, `…11`)
+- `story_json(game)` (belső) → `game_story` (tagok, befejezett játék): ügynév (determinisztikus a kódból,
+  csak mássalhangzós melléknév → mindig „A …”), legközelebbi helyzet (detektív–Mr. X párosítás ±15 s,
+  elkapásnál az utolsó perc kizárva), felfedések, használt tárgyak, címek (Szellem / Megfoghatatlan /
+  Lebukott / Vérszag / Hajszálnyira / Maratonista / Kincsvadász / Nyomozó).
+- Ügyirat-kép: `CARD_HTML` (`src/lib/story.ts`) rejtett WebView-vásznon rajzol 1080×1350 PNG-t (csempék
+  nélkül, hogy a canvas ne „szennyeződjön”), `expo-file-system` + `expo-sharing` osztja meg. Szöveges megosztás:
+  RN `Share`. Magyar névelő számok előtt: `az()` (az 1., az 5., a 10.).
+- `rematch(game)`: host, ugyanaz a pálya/beállítás/pontok/játékosok, szerepcsere (az elkapó, különben a
+  következő belépő lesz Mr. X), idempotens; a régi játék `rematch_game_id`-jén át mindenki átkerül.
+- Meghívó: `mrx://join/KÓD` → `src/app/join/[code].tsx`; lobby „Meghívás linkkel” → `SITE_URL/?join=KÓD`.
+- Nyilvános visszajátszás: `set_replay_public` (host; menti is a visszajátszást), `public_replay(code)` anonnak.
+- `site/index.html`: statikus oldal (meghívó Android intent-linkkel + animált nyilvános visszajátszás),
+  EAS Hostingra szánva (`SITE_URL` = https://mrx-ugy.expo.app) – a közzétételhez felhasználói jóváhagyás kell;
+  `__APK_URL__`-t deploy előtt a legfrissebb APK-linkre kell cserélni.
+- app version 0.3.0 (expo-sharing natív modul).
+- Teszt: `scripts/story-test.mjs` (KEEP_PUBLIC=1 nyilvánosan hagyja a visszajátszást a weboldal kipróbálásához).
+
 ### Gyors frissítés (EAS Update)
 - `expo-updates`, `runtimeVersion: appVersion`, csatorna: `preview` (eas.json). Csak JS-változás:
   `npx eas-cli@latest update --channel preview --message "..."` → a telefonok induláskor letöltik.
