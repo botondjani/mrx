@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase, type DetectiveSnapshot, type Game, type LivePosition, type Player, type Item, type PointRow, type Reveal } from './supabase';
+import { supabase, type DetectiveSnapshot, type Game, type LivePosition, type Player, type Item, type PointPickup, type PointRow, type Reveal } from './supabase';
 
 export function useUserId() {
   const [id, setId] = useState<string | null>(null);
@@ -48,3 +48,6 @@ export const useSnapshots = (gameId: string) =>
 export const usePoints = (gameId: string) => useLiveQuery<PointRow[]>('points', 'game_id', gameId, false) ?? [];
 // RLS: only my own items.
 export const useItems = (gameId: string) => useLiveQuery<Item[]>('items', 'game_id', gameId, false, 'picked_at') ?? [];
+// RLS: only my own pickups – point cooldowns are per player, so they reveal nothing about others.
+export const usePickups = (gameId: string) =>
+  useLiveQuery<PointPickup[]>('point_pickups', 'game_id', gameId, false, 'picked_at') ?? [];

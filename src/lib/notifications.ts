@@ -20,6 +20,7 @@ const TEXTS: Record<string, { title: string; body: (p: any) => string; vibrate: 
   mrx_exposed: { title: 'Mr. X kilépett a pályáról!', body: () => '2 percig élőben látszik a térképen.', vibrate: [0, 400, 200, 400] },
   head_start_violation: { title: 'Maradj a kezdőpontnál!', body: () => 'Az előny alatt 100 méteren belül kell maradnod.', vibrate: [0, 300, 150, 300] },
   reveal_fogged: { title: 'Köd!', body: () => 'Mr. X ködbe burkolózott – ez a felfedés elmaradt.', vibrate: [0, 300] },
+  jammed: { title: 'Zavarás!', body: () => 'Mr. X megzavarta a rádiót – 1 percig nem látjátok egymást.', vibrate: [0, 300, 150, 300] },
   tracker_started: { title: 'Nyomkövető aktív', body: () => 'Mr. X 60 másodpercig élőben látszik.', vibrate: [0, 400, 200, 400] },
   speeding: { title: 'Túl gyors vagy!', body: () => 'Ebben a játékban tilos a tömegközlekedés.', vibrate: [0, 300, 150, 300] },
 };

@@ -61,4 +61,6 @@ export type LivePosition = {
 export type Reveal = { id: number; lat: number; lng: number; heading: number | null; kind: string; revealed_at: string };
 export type DetectiveSnapshot = { id: number; player_id: string; lat: number; lng: number; taken_at: string };
 export type PointRow = { id: string; name: string | null; kind: string | null; lat: number; lng: number; active_after: string | null };
-export type Item = { id: string; kind: 'radar' | 'tracker' | 'decoy' | 'fog'; used_at: string | null };
+export type ItemKind = 'radar' | 'tracker' | 'compass' | 'decoy' | 'fog' | 'hide' | 'jam';
+export type Item = { id: string; kind: ItemKind; used_at: string | null };
+export type PointPickup = { point_id: string; picked_at: string };

@@ -80,6 +80,17 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
   `{ random: true }` → véletlen „Rejtekhely N” pontok a körben (≥150 m, max 12).
 - Lobby: előnézeti térkép (kör + pontok), görgethető.
 
+### Power-up átdolgozás (2026-11-04, `20261104000007_powerup_rework.sql`)
+- Pont-újratöltés játékosonként (`point_pickups`, RLS: csak saját) – a közös cooldown elárulta, hol/mikor
+  vett fel Mr. X pontot. A `points.active_after` már nem használt.
+- Köd csak az időzített felfedést hagyja ki (radar működik). Csali: időzített és radar felfedésnél.
+- Új tárgyak: Iránytű (detektív; 8 irány + távolságsáv, koordináta nélkül), Rejtőzködés (Mr. X; `hide_until`,
+  2 percig radar/nyomkövető/iránytű hatástalan → `{blocked:true}`), Zavarás (Mr. X; `jam_until`, a
+  `live_positions` RLS-e ennyi ideig nem ad detektívnek más detektívet).
+- `activate_item` (jsonb eredmény) váltja a `use_item`-et (visszavonva).
+- Host-beállítás (`set_options`): `items` (szerepenként engedélyezett lista, validált), `points_max` (3–20),
+  `point_cooldown_s` (60–3600). Lobby: tárgy-chipek, pontszám 6/9/12/16, újratöltés 5/10/15 perc.
+
 ### Gyors frissítés (EAS Update)
 - `expo-updates`, `runtimeVersion: appVersion`, csatorna: `preview` (eas.json). Csak JS-változás:
   `npx eas-cli@latest update --channel preview --message "..."` → a telefonok induláskor letöltik.

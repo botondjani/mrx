@@ -20,6 +20,7 @@ const MESSAGES: Record<string, string> = {
   too_far: 'Túl messze vagy a ponttól (25 m-en belül kell lenned).',
   item_not_found: 'Ez a tárgy már nem használható.',
   head_start: 'Az előny alatt nem használhatsz tárgyat.',
+  no_items_for_role: 'Ebben a játékban a te szerepednek nincs engedélyezett tárgya.',
   decoy_too_far: 'A csali legfeljebb 300 m-re lehet tőled.',
   overpass_: 'Az OpenStreetMap-szolgáltatás most nem érhető el, próbáld újra később.',
 };

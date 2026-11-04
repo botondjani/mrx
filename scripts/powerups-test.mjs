@@ -1,5 +1,5 @@
-// Phase 3 server test: power-ups (pickup rules, radar, tracker, decoy, fog), GPS filtering,
-// stats, replay and replay saving.
+// Server test: power-ups (pickup rules, per-player cooldown, all 7 items, host item pool),
+// GPS filtering, stats, replay and replay saving.
 //   node --env-file=.env scripts/powerups-test.mjs
 import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
@@ -46,7 +46,11 @@ async function report(b, pos, accuracy = 5) {
 const [mrx, d1, d2, d3] = [await bot("X"), await bot("D1"), await bot("D2"), await bot("D3")];
 const game = ok(await mrx.sb.rpc("create_game", { p_name: "X" }));
 ok(await mrx.sb.rpc("set_area", { p_game: game.id, p_lat: C.lat, p_lng: C.lng, p_radius_m: 2000 }));
-ok(await mrx.sb.rpc("set_options", { p_game: game.id, p_options: { head_start_s: 0, duration_min: 30, reveal_interval_s: 20, reveal_interval_endgame_s: 20 } }));
+ok(await mrx.sb.rpc("set_options", { p_game: game.id, p_options: {
+  head_start_s: 0, duration_min: 30, reveal_interval_s: 20, reveal_interval_endgame_s: 20,
+  items: { detective: ["radar", "tracker"], mrx: ["decoy", "fog"] }, // host-selected item pool
+} }));
+await fails(mrx.sb.rpc("set_options", { p_game: game.id, p_options: { items: { mrx: ["nuke"] } } }), "invalid_option");
 for (const b of [d1, d2, d3]) ok(await b.sb.rpc("join_game", { p_code: game.code, p_name: b.name }));
 
 // 12 synthetic OSM nodes on a line through the center, 160 m apart (Overpass is not reachable from CI/cloud).
@@ -79,11 +83,13 @@ await walkTo(d1, points[5]);
 const k1 = ok(await d1.sb.rpc("pickup_point", { p_point: points[5].id }));
 assert.ok(["radar", "tracker"].includes(k1), "detective gets a detective item");
 await fails(d1.sb.rpc("pickup_point", { p_point: points[5].id }), "point_cooldown");
+// Cooldown is per player: d1 sees only its own pickups (no hint about anyone else).
+assert.equal(ok(await d1.sb.from("point_pickups").select("player_id").eq("game_id", game.id)).length, 1);
 
 const reveals = async () => ok(await d1.sb.from("reveals").select("lat, lng, kind").eq("game_id", game.id).order("revealed_at"));
 const useAll = async (b) => {
   for (const it of ok(await b.sb.from("items").select("id, kind").eq("game_id", game.id).is("used_at", null))) {
-    ok(await b.sb.rpc("use_item", { p_item: it.id }));
+    ok(await b.sb.rpc("activate_item", { p_item: it.id }));
   }
 };
 
@@ -96,7 +102,7 @@ for (let i = 0; used.size < 2 && i < 4; i++) {
   }
   const [it] = ok(await d1.sb.from("items").select("id, kind").eq("game_id", game.id).is("used_at", null));
   const before = (await reveals()).length;
-  ok(await d1.sb.rpc("use_item", { p_item: it.id }));
+  ok(await d1.sb.rpc("activate_item", { p_item: it.id }));
   if (it.kind === "radar") {
     const r = await reveals();
     assert.equal(r.length, before + 1, "radar reveals immediately");
@@ -137,13 +143,13 @@ for (let i = 11; mrxUsed.size < 2 && i > 6; i--) {
   const [it] = ok(await mrx.sb.from("items").select("id").eq("game_id", game.id).is("used_at", null));
   d3.events.length = 0;
   if (kind === "decoy") {
-    await fails(mrx.sb.rpc("use_item", { p_item: it.id, p_lat: C.lat, p_lng: C.lng + 0.02 }), "decoy_too_far");
+    await fails(mrx.sb.rpc("activate_item", { p_item: it.id, p_lat: C.lat, p_lng: C.lng + 0.02 }), "decoy_too_far");
     const fake = { lat: points[i].lat + 0.001, lng: points[i].lng };
-    ok(await mrx.sb.rpc("use_item", { p_item: it.id, p_lat: fake.lat, p_lng: fake.lng }));
+    ok(await mrx.sb.rpc("activate_item", { p_item: it.id, p_lat: fake.lat, p_lng: fake.lng }));
     const res = await waitForReveal();
     assert.ok(!res.fogged && Math.abs(res.last.lat - fake.lat) < 1e-9 && res.last.kind === "scheduled", "decoy reveal shows the fake point as a normal reveal");
   } else {
-    ok(await mrx.sb.rpc("use_item", { p_item: it.id }));
+    ok(await mrx.sb.rpc("activate_item", { p_item: it.id }));
     const res = await waitForReveal();
     assert.ok(res.fogged && res.added === 0, "fog skipped the reveal");
   }
@@ -169,6 +175,63 @@ const replay = ok(await d2.sb.rpc("game_replay", { p_game: game.id }));
 assert.ok(replay.tracks.length > 10 && replay.reveals.length > 2);
 await fails(d1.sb.rpc("save_replay", { p_game: game.id }), "not_host");
 ok(await mrx.sb.rpc("save_replay", { p_game: game.id }));
+
+// Game 2: compass, hide, jam.
+{
+  const [x2, e1, e2, e3] = [await bot("X2"), await bot("E1"), await bot("E2"), await bot("E3")];
+  const g2 = ok(await x2.sb.rpc("create_game", { p_name: "X2" }));
+  ok(await x2.sb.rpc("set_area", { p_game: g2.id, p_lat: C.lat, p_lng: C.lng, p_radius_m: 2000 }));
+  ok(await x2.sb.rpc("set_options", { p_game: g2.id, p_options: { head_start_s: 0, items: { detective: ["compass"], mrx: ["hide", "jam"] } } }));
+  ok(await x2.sb.functions.invoke("generate_points", { body: { game_id: g2.id, elements } }));
+  const pts2 = ok(await x2.sb.from("points").select("id, lat, lng").eq("game_id", g2.id)).sort((a, b) => a.lng - b.lng);
+  for (const b of [e1, e2, e3]) ok(await b.sb.rpc("join_game", { p_code: g2.code, p_name: b.name }));
+  const pl2 = ok(await x2.sb.from("players").select("id, user_id").eq("game_id", g2.id));
+  ok(await x2.sb.rpc("assign_roles", { p_game: g2.id, p_mrx_player: pl2.find((p) => p.user_id === x2.userId).id }));
+  ok(await x2.sb.rpc("start_game", { p_game: g2.id }));
+  const rep = (b, pos) => b.sb.functions.invoke("report_position", {
+    body: { game_id: g2.id, locations: [{ ...pos, accuracy: 5, timestamp: Date.now() }] } }).then(ok);
+  for (const b of [x2, e1, e2, e3]) { b.pos = C; await rep(b, C); }
+  const walk2 = async (b, t) => { // same jump-safe walking as above
+    for (;;) {
+      const d = Math.hypot((t.lat - b.pos.lat) * 111320, (t.lng - b.pos.lng) * 111320 * Math.cos((C.lat * Math.PI) / 180));
+      const f = Math.min(1, 140 / Math.max(d, 1));
+      await sleep(4000);
+      b.pos = { lat: b.pos.lat + (t.lat - b.pos.lat) * f, lng: b.pos.lng + (t.lng - b.pos.lng) * f };
+      await rep(b, b.pos);
+      if (f === 1) return;
+    }
+  };
+  // Compass: Mr. X stays at the center, E1 walks east to point 6 (+80 m) → Mr. X is west ("Ny").
+  await walk2(e1, pts2[6]);
+  ok(await e1.sb.rpc("pickup_point", { p_point: pts2[6].id }));
+  let [it] = ok(await e1.sb.from("items").select("id, kind").eq("game_id", g2.id).is("used_at", null));
+  const compass = ok(await e1.sb.rpc("activate_item", { p_item: it.id }));
+  assert.equal(compass.direction, "Ny", "compass points west");
+  assert.equal(compass.distance, "150 m-en belül");
+  assert.ok(!("lat" in compass) && !("lng" in compass), "compass gives no coordinates");
+  // Mr. X: pick up at points 5, 4, 3 until both hide and jam were used.
+  const used2 = new Set();
+  for (const i of [5, 4, 3, 2]) {
+    if (used2.size === 2) break;
+    await walk2(x2, pts2[i]);
+    const kind = ok(await x2.sb.rpc("pickup_point", { p_point: pts2[i].id }));
+    [it] = ok(await x2.sb.from("items").select("id").eq("game_id", g2.id).is("used_at", null));
+    ok(await x2.sb.rpc("activate_item", { p_item: it.id }));
+    if (kind === "jam") {
+      const seen = ok(await e2.sb.from("live_positions").select("player_id").eq("game_id", g2.id));
+      assert.equal(seen.length, 1, "jammed: a detective sees only itself");
+      await rep(e2, e2.pos);
+    } else {
+      await walk2(e1, pts2[7]);
+      ok(await e1.sb.rpc("pickup_point", { p_point: pts2[7].id }));
+      [it] = ok(await e1.sb.from("items").select("id").eq("game_id", g2.id).is("used_at", null));
+      assert.equal(ok(await e1.sb.rpc("activate_item", { p_item: it.id })).blocked, true, "hide blocks the compass");
+    }
+    used2.add(kind);
+  }
+  assert.equal(used2.size, 2, "hide and jam exercised");
+  console.log(`OK – game ${g2.code}: compass ${compass.direction} ${compass.distance}; hide + jam`);
+}
 
 console.log(`OK – game ${game.code}: items used ${[...used, ...mrxUsed].join(", ")}; stats`, JSON.stringify(stats.players));
 process.exit(0);

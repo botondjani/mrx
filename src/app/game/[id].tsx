@@ -4,20 +4,15 @@ import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { GameMap, type MapPlayer } from '../../components/GameMap';
 import { Btn, C, FONT, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
-import { useGame, useItems, useLivePositions, usePlayers, usePoints, useReveals, useSnapshots, useUserId } from '../../lib/hooks';
+import { useGame, useItems, useLivePositions, usePickups, usePlayers, usePoints, useReveals, useSnapshots, useUserId } from '../../lib/hooks';
+import { ITEMS } from '../../lib/items';
+import type { ItemKind } from '../../lib/supabase';
 import { distanceM, zoneRadius } from '../../lib/geo';
 import { supabase } from '../../lib/supabase';
 import { getLastOkAt, startTracking, stopTracking } from '../../lib/tracking';
 
 type Candidate = { player_id: string; name: string; nearby: boolean };
 
-const ITEM_LABEL = { radar: 'Radar', tracker: 'Nyomkövető', decoy: 'Csali', fog: 'Köd' } as const;
-const ITEM_HELP = {
-  radar: 'Mr. X azonnal felfedődik.',
-  tracker: 'Mr. X 60 másodpercig élőben látszik.',
-  decoy: 'A következő felfedés egy általad kijelölt hamis pontot mutat (300 m-en belül).',
-  fog: 'A következő felfedés kimarad.',
-} as const;
 
 const mmss = (ms: number) => {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -32,6 +27,7 @@ export default function GameScreen() {
   const reveals = useReveals(id);
   const snapshots = useSnapshots(id); // RLS: Mr. X's periodic view of the detectives
   const points = usePoints(id);
+  const pickups = usePickups(id);
   const items = useItems(id).filter((i) => !i.used_at);
   const [decoyItem, setDecoyItem] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -66,10 +62,15 @@ export default function GameScreen() {
   const inHeadStart = now < headStartEnd;
   const remaining = new Date(game.ends_at).getTime() - now;
 
+  // Per-player cooldown, from my own pickups only.
+  const cooldownLeft = (pointId: string) => {
+    const last = pickups.filter((x) => x.point_id === pointId).at(-1);
+    return last ? new Date(last.picked_at).getTime() + (cfg.point_cooldown_s ?? 600) * 1000 - now : 0;
+  };
   const myLive = live.find((l) => l.player_id === me?.id);
   const pickupRadius = cfg.pickup_radius_m as number;
   const nearPoint = myLive
-    ? points.find((p) => (!p.active_after || new Date(p.active_after).getTime() <= now) && distanceM(myLive, p) <= pickupRadius)
+    ? points.find((p) => cooldownLeft(p.id) <= 0 && distanceM(myLive, p) <= pickupRadius)
     : undefined;
   const offlineFor = getLastOkAt() ? now - getLastOkAt() : 0;
 
@@ -105,24 +106,26 @@ export default function GameScreen() {
     setError(null);
     const { data, error } = await supabase.rpc('pickup_point', { p_point: pointId });
     if (error) setError(huError(error));
-    else setInfo(`Felvetted: ${ITEM_LABEL[data as keyof typeof ITEM_LABEL]}`);
+    else setInfo(`Felvetted: ${ITEMS[data as ItemKind]?.label ?? data}`);
   }
 
-  async function applyItem(itemId: string, kind: keyof typeof ITEM_LABEL, lngLat?: [number, number]) {
+  async function applyItem(itemId: string, kind: ItemKind, lngLat?: [number, number]) {
     if (kind === 'decoy' && !lngLat) {
       setDecoyItem(itemId);
       setInfo('Koppints a térképre, ahová a csalit teszed (300 m-en belül).');
       return;
     }
     setError(null);
-    const { error } = await supabase.rpc('use_item', { p_item: itemId, p_lat: lngLat?.[1] ?? null, p_lng: lngLat?.[0] ?? null });
+    const { data, error } = await supabase.rpc('activate_item', { p_item: itemId, p_lat: lngLat?.[1] ?? null, p_lng: lngLat?.[0] ?? null });
     setDecoyItem(null);
     if (error) setError(huError(error));
-    else setInfo(`${ITEM_LABEL[kind]} használva. ${ITEM_HELP[kind]}`);
+    else if (data?.blocked) setInfo(`${ITEMS[kind].label}: hatástalan – Mr. X rejtőzködik.`);
+    else if (data?.direction) setInfo(`Iránytű: Mr. X ${data.direction} irányban, ${data.distance} távolságra.`);
+    else setInfo(`${ITEMS[kind].label} használva. ${ITEMS[kind].help}`);
   }
 
-  function confirmUse(itemId: string, kind: keyof typeof ITEM_LABEL) {
-    Alert.alert(ITEM_LABEL[kind], ITEM_HELP[kind], [
+  function confirmUse(itemId: string, kind: ItemKind) {
+    Alert.alert(ITEMS[kind].label, ITEMS[kind].help, [
       { text: 'Mégse', style: 'cancel' },
       { text: 'Használom', onPress: () => applyItem(itemId, kind) },
     ]);
@@ -150,7 +153,7 @@ export default function GameScreen() {
           players={mapPlayers}
           reveals={reveals}
           points={points.map((p) => {
-            const cooldown = p.active_after ? new Date(p.active_after).getTime() - now : 0;
+            const cooldown = cooldownLeft(p.id);
             return { id: p.id, label: cooldown > 0 ? mmss(cooldown) : (p.name ?? ''), lat: p.lat, lng: p.lng };
           })}
           onPress={decoyItem ? (lngLat) => applyItem(decoyItem, 'decoy', lngLat) : undefined}
@@ -178,7 +181,7 @@ export default function GameScreen() {
             {items.map((i) => (
               <View key={i.id} style={{ flex: 1 }}>
                 <Btn
-                  title={decoyItem === i.id ? 'Csali: koppints…' : ITEM_LABEL[i.kind]}
+                  title={decoyItem === i.id ? 'Csali: koppints…' : ITEMS[i.kind].label}
                   variant="secondary"
                   onPress={() => (decoyItem === i.id ? setDecoyItem(null) : confirmUse(i.id, i.kind))}
                 />

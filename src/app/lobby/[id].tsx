@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { GameMap } from '../../components/GameMap';
+import { ITEM_KINDS, ITEMS } from '../../lib/items';
 import { Btn, C, FONT, ui } from '../../components/ui';
 import { huError } from '../../lib/errors';
 import { useGame, usePlayers, usePoints, useUserId } from '../../lib/hooks';
@@ -41,6 +42,15 @@ export default function Lobby() {
     </Pressable>
   );
   const zonePct = (game.config.zone_final_pct as number | undefined) ?? 100;
+  const enabled = (game.config.items ?? {}) as Record<'detective' | 'mrx', string[]>;
+  const toggleItem = (kind: (typeof ITEM_KINDS)[number]) => {
+    const role = ITEMS[kind].role;
+    const list = enabled[role] ?? [];
+    const next = list.includes(kind) ? list.filter((k) => k !== kind) : [...list, kind];
+    call('set_options', { p_game: id, p_options: { items: { ...enabled, [role]: next } } });
+  };
+  const itemSummary = (role: 'detective' | 'mrx') =>
+    (enabled[role] ?? []).map((k) => ITEMS[k as keyof typeof ITEMS]?.label ?? k).join(', ') || 'nincs';
 
   return (
     <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={ui.screen}>
@@ -105,6 +115,33 @@ export default function Lobby() {
               )}
             </View>
           </View>
+          <View style={{ gap: 6 }}>
+            <Text style={[ui.stamp, { color: C.gold }]}>Power-upok</Text>
+            {(['detective', 'mrx'] as const).map((role) => (
+              <View key={role} style={{ gap: 6 }}>
+                <Text style={ui.muted}>{role === 'mrx' ? 'Mr. X tárgyai' : 'Detektívek tárgyai'} (koppints a ki-/bekapcsoláshoz)</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {ITEM_KINDS.filter((k) => ITEMS[k].role === role).map((k) =>
+                    chip(ITEMS[k].label, (enabled[role] ?? []).includes(k), () => toggleItem(k)),
+                  )}
+                </View>
+              </View>
+            ))}
+            <Text style={ui.muted}>Pontok száma a térképen (újragenerálás után érvényes)</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[6, 9, 12, 16].map((n) =>
+                chip(String(n), game.config.points_max === n, () => call('set_options', { p_game: id, p_options: { points_max: n } })),
+              )}
+            </View>
+            <Text style={ui.muted}>Újratöltés pontonként, játékosonként</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[5, 10, 15].map((m) =>
+                chip(`${m} perc`, game.config.point_cooldown_s === m * 60, () =>
+                  call('set_options', { p_game: id, p_options: { point_cooldown_s: m * 60 } }),
+                ),
+              )}
+            </View>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={ui.p}>Tömegközlekedés engedélyezve</Text>
             <Switch
@@ -124,6 +161,7 @@ export default function Lobby() {
         <Text style={ui.p}>
           Játékidő: {game.config.duration_min as number} perc · Tömegközlekedés: {game.config.transit_allowed ? 'engedélyezve' : 'tilos'}
           {zonePct < 100 ? ` · a kör ${zonePct}%-ra szűkül` : ''}
+          {`\nDetektív tárgyak: ${itemSummary('detective')}\nMr. X tárgyai: ${itemSummary('mrx')}`}
           {'\n'}Várakozás a házigazdára…
         </Text>
       )}
