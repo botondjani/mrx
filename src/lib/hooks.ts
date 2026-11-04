@@ -9,6 +9,10 @@ export function useUserId() {
   return id;
 }
 
+// Realtime returns the existing channel for a reused name, and adding callbacks to an already
+// subscribed channel throws. Every hook instance (e.g. lobby + area screen) needs its own name.
+let channelSeq = 0;
+
 /** Fetches rows and refetches on every Realtime change (RLS applies to both). */
 function useLiveQuery<T>(table: string, filterCol: string, value: string, single: boolean, orderCol?: string) {
   const [data, setData] = useState<T | null>(null);
@@ -22,7 +26,7 @@ function useLiveQuery<T>(table: string, filterCol: string, value: string, single
     };
     load();
     const channel = supabase
-      .channel(`${table}:${value}`)
+      .channel(`${table}:${value}:${++channelSeq}`)
       .on('postgres_changes', { event: '*', schema: 'public', table, filter: `${filterCol}=eq.${value}` }, load)
       .subscribe();
     return () => {

@@ -82,4 +82,7 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
 - 2. fázis: kód kész, botokkal és láthatósági teszttel ellenőrizve; valós 2 telefonos teszt hátra.
 - 3. fázis: kód kész, `powerups-test.mjs` + korábbi tesztek zöldek; valós 3 telefonos, 30 perces teszt és
   akkumérés hátra.
+- Hiba volt (javítva): azonos nevű Realtime-csatorna két képernyőn (pl. lobby + pálya) → a realtime-js a
+  meglévő csatornát adja vissza, az újabb `.on()` kivételt dob → képernyő-összeomlás (sötét üres képernyő).
+  Javítás: egyedi csatornanév hook-példányonként; `ErrorBoundary` a `_layout.tsx`-ben.
 - Ismert MVP-egyszerűsítés: a kliens Realtime eseményre újratölti a táblát (egyszerű, RLS-helyes; 12 játékosig elég).

@@ -1,12 +1,24 @@
 import { SpecialElite_400Regular, useFonts } from '@expo-google-fonts/special-elite';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { C, FONT, ui } from '../components/ui';
+import { Btn, C, FONT, ui } from '../components/ui';
 import { huError } from '../lib/errors';
 import { setupNotifications } from '../lib/notifications';
 import { ensureSession } from '../lib/supabase';
+
+/** Shown instead of a blank screen when a screen throws. */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View style={[ui.screen, { justifyContent: 'center' }]}>
+      <Text style={[ui.stamp, { color: C.crimson }]}>Hiba történt</Text>
+      <Text style={ui.p}>Valami elromlott ezen a képernyőn. Próbáld újra; ha ismétlődik, küldd el ezt az üzenetet:</Text>
+      <Text selectable style={ui.muted}>{error.message}</Text>
+      <Btn title="Újra" onPress={retry} />
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
