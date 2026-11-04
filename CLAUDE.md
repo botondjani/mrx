@@ -97,9 +97,16 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
   automatikusan újrasorsolja a pontokat.
 - Host húzással mozgathatja a pontokat (`move_point`, csak lobbyban, az eredeti körön belül bárhová) és a
   pálya középpontját (húzható arany pin, „Saját helyemre” gomb). `GameMap`: `onPointMove`, `onCenterMove`, `redrawKey`.
-- Lobby-beállítások összecsukható, tömör sorokban.
 - Ikon: nagyító bíbor írógépes X-szel, sötét háttér (Playwright-tal renderelt SVG); `expo-splash-screen` sötét
   háttérrel, `userInterfaceStyle: dark`. Az ikon natív → új APK kellett; a JS-runtime 0.2.0 maradt.
+
+### Pálya-szerkesztő, beállítás-popup (2026-11-04)
+- Nincs külön pont-képernyő: a „Pálya” képernyőn minden azonnal mentődik. A középpont húzásakor az egész kör
+  és a pontjai együtt mozognak (kliens: Leaflet „followers”; szerver: `set_area` a pontokat a középponttal
+  együtt tolja). Sugárváltozáskor / „Újrasorsolás”-kor a pontok újrasorsolódnak. Első megnyitáskor a saját
+  helyre (vagy Budapestre) automatikusan létrejön a pálya a pontokkal.
+- `powerups_enabled` (alap: igen): kikapcsolva `generate_points` minden pontot töröl, `pickup_point` → `powerups_disabled`.
+- Lobby-beállítások felugró `Modal`-ban; pontszám és power-up kapcsoló változásakor a pontok azonnal újrasorsolódnak.
 
 ### Gyors frissítés (EAS Update)
 - `expo-updates`, `runtimeVersion: appVersion`, csatorna: `preview` (eas.json). Csak JS-változás:

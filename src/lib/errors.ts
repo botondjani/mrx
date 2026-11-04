@@ -10,6 +10,7 @@ const MESSAGES: Record<string, string> = {
   player_not_found: 'Nincs ilyen játékos.',
   invalid_option: 'Érvénytelen beállítás.',
   point_not_found: 'Nincs ilyen pont.',
+  powerups_disabled: 'Ebben a játékban nincsenek power-upok.',
   point_outside_area: 'A pont csak a körön belülre kerülhet.',
   not_mrx: 'Ezt csak Mr. X teheti meg.',
   game_not_running: 'A játék nem fut.',

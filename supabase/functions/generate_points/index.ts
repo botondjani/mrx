@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
   if (game.status !== "lobby") return json({ error: "game_already_started" }, 409);
   if (game.center_lat == null || !game.radius_m) return json({ error: "area_not_set" }, 409);
 
-  const max = game.config.points_max ?? 12;
+  // Power-ups switched off → no points at all.
+  const max = game.config.powerups_enabled === false ? 0 : (game.config.points_max ?? 12);
   const spacing = game.config.point_min_spacing_m ?? 150;
   const center = { lat: game.center_lat, lng: game.center_lng };
 

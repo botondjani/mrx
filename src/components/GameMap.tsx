@@ -67,10 +67,11 @@ const HTML = `<!doctype html><html><head>
   window.setState = (s) => {
     layer.clearLayers();
     const zone = s.zoneRadiusM || s.radiusM;
+    const followers = []; // everything that moves with the circle while its center is dragged
     if (s.radiusM && zone < s.radiusM - 1) L.circle([s.center.lat, s.center.lng], { radius: s.radiusM, color: '${C.muted}',
       weight: 1, dashArray: '2 6', fill: false, interactive: false }).addTo(layer);
-    if (zone) L.circle([s.center.lat, s.center.lng], { radius: zone, color: '${C.gold}', weight: 2,
-      dashArray: '6 4', fillColor: '${C.gold}', fillOpacity: 0.06, interactive: false }).addTo(layer);
+    if (zone) followers.push(L.circle([s.center.lat, s.center.lng], { radius: zone, color: '${C.gold}', weight: 2,
+      dashArray: '6 4', fillColor: '${C.gold}', fillOpacity: 0.06, interactive: false }).addTo(layer));
     // First render: fit the whole area.
     if (!centered) {
       const dLat = (s.radiusM || 500) / 111320, dLng = dLat / Math.cos(s.center.lat * Math.PI / 180);
@@ -83,11 +84,22 @@ const HTML = `<!doctype html><html><head>
         const m = L.marker([p.lat, p.lng], { draggable: true, icon: pin('${C.ink}', 22) }).addTo(layer);
         m.on('dragend', () => { const ll = m.getLatLng(); send({ t: 'point', id: p.id, lat: ll.lat, lng: ll.lng }); });
         label(m, p.label);
-      } else label(L.circleMarker([p.lat, p.lng], { radius: 7, color: '${C.gold}', weight: 2,
-        fillColor: '${C.ink}', fillOpacity: 1, interactive: false }).addTo(layer), p.label);
+        followers.push(m);
+      } else {
+        const m = L.circleMarker([p.lat, p.lng], { radius: 7, color: '${C.gold}', weight: 2,
+          fillColor: '${C.ink}', fillOpacity: 1, interactive: false }).addTo(layer);
+        label(m, p.label);
+        followers.push(m);
+      }
     }
     if (s.dragCenter) {
       const m = L.marker([s.center.lat, s.center.lng], { draggable: true, icon: pin('${C.gold}', 30) }).addTo(layer);
+      // The whole circle (and its points) follows the pin while dragging.
+      const start = followers.map((f) => f.getLatLng());
+      m.on('drag', () => {
+        const ll = m.getLatLng(), dLat = ll.lat - s.center.lat, dLng = ll.lng - s.center.lng;
+        followers.forEach((f, i) => f.setLatLng([start[i].lat + dLat, start[i].lng + dLng]));
+      });
       m.on('dragend', () => { const ll = m.getLatLng(); send({ t: 'center', lat: ll.lat, lng: ll.lng }); });
     }
     const r = s.reveals;
