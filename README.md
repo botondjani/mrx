@@ -39,6 +39,16 @@ A `preview` profil aláírt release APK-t készít. A build végén kapott linke
 töltsd le és telepítsd. Barátoknak szóló útmutató (ismeretlen forrás, Xiaomi/Samsung akkubeállítás):
 [TELEPITES.md](TELEPITES.md).
 
+## Gyors frissítés APK nélkül (EAS Update)
+
+Csak JavaScript/TypeScript-változásnál nem kell új APK, a telefonok a következő indításkor frissülnek:
+
+```bash
+npx eas-cli@latest update --channel preview --message "javítás leírása"
+```
+
+Natív változásnál (új natív csomag, engedély, `app.json` plugin) emeld a `version`-t az `app.json`-ban és buildelj új APK-t.
+
 ## Bot-szimulátor
 
 ```bash

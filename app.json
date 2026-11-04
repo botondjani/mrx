@@ -22,7 +22,10 @@
       "permissions": [
         "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ],
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "plugins": [
       "expo-router",
@@ -43,6 +46,9 @@
         "projectId": "37816be3-0f65-4a39-a9f9-c2964432dff2"
       }
     },
-    "owner": "botond2004s-team"
+    "owner": "botond2004s-team",
+    "updates": {
+      "url": "https://u.expo.dev/37816be3-0f65-4a39-a9f9-c2964432dff2"
+    }
   }
 }

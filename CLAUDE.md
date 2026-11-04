@@ -64,6 +64,11 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
 - A Supabase MCP `apply_migration` jóváhagyást kér adatmódosító/törlő utasításnál, ami a felhasználónál nem
   jelent meg → a migrációkat úgy bontottuk, hogy ne módosítsanak meglévő sorokat.
 
+### Gyors frissítés (EAS Update)
+- `expo-updates`, `runtimeVersion: appVersion`, csatorna: `preview` (eas.json). Csak JS-változás:
+  `npx eas-cli@latest update --channel preview --message "..."` → a telefonok induláskor letöltik.
+- Natív változás (új natív csomag, engedély, app.json plugin) → `version` emelése + új APK-build.
+
 ## Állapot
 - 1. fázis: kód kész, szerveroldal ellenőrizve; valós eszközös teszt (2 telefon, lezárt képernyő) még hátra.
 - 2. fázis: kód kész, botokkal és láthatósági teszttel ellenőrizve; valós 2 telefonos teszt hátra.
