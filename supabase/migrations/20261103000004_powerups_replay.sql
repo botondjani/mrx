@@ -1,4 +1,4 @@
--- Phase 3: power-ups, GPS filtering, stats, replay, position retention (pg_cron).
+-- Phase 3: power-ups, GPS filtering, stats, replay (retention: next migration).
 
 alter table public.games
   add column fog_pending boolean not null default false,
@@ -9,7 +9,8 @@ alter table public.games
 
 alter publication supabase_realtime add table public.items;
 
--- New config keys (GPS filtering); existing games get the defaults for missing keys.
+-- New config keys (GPS filtering). process_report merges the defaults under each game's
+-- config, so existing games get the new keys without rewriting their rows.
 create or replace function public.default_game_config()
 returns jsonb
 language sql
@@ -56,8 +57,6 @@ as $$
     'gps_max_speed_kmh', 150
   )
 $$;
-
-update public.games set config = public.default_game_config() || config;
 
 -- Reveal Mr. X. Scheduled and radar reveals honour Mr. X's items: fog skips the reveal,
 -- a decoy shows the chosen fake point (stored with the same kind, so detectives cannot tell).
@@ -129,7 +128,7 @@ begin
   if not found then raise exception 'game_not_found'; end if;
   select * into me from public.players where game_id = p_game and user_id = p_user;
   if not found then raise exception 'not_in_game'; end if;
-  cfg := g.config;
+  cfg := public.default_game_config() || g.config;
 
   if g.status = 'running' then
     -- GPS filtering: drop inaccurate fixes, and jumps implying an impossible speed since the
@@ -427,31 +426,7 @@ begin
 end;
 $$;
 
--- ---------------------------------------------------------------------------
--- Retention: positions are deleted position_retention_h after the game ends (unless the host
--- saved the replay). Abandoned games (never finished) are purged after 24 h.
--- ---------------------------------------------------------------------------
-create or replace function public.purge_positions()
-returns void language plpgsql security definer set search_path = '' as $$
-declare
-  v_ids uuid[];
-begin
-  select coalesce(array_agg(id), '{}') into v_ids from public.games g
-  where not g.replay_saved and (
-    (g.status = 'finished' and g.finished_at < now() - make_interval(hours => (g.config->>'position_retention_h')::int))
-    or (g.status <> 'finished' and g.created_at < now() - interval '24 hours'));
-  delete from public.positions where game_id = any (v_ids);
-  delete from public.live_positions where game_id = any (v_ids);
-  delete from public.detective_snapshots where game_id = any (v_ids);
-  delete from public.reveals where game_id = any (v_ids);
-  delete from public.events where game_id = any (v_ids);
-end;
-$$;
-
-create extension if not exists pg_cron;
-select cron.schedule('purge-positions', '17 * * * *', 'select public.purge_positions()');
-
-revoke execute on function public.purge_positions(), public.default_game_config() from public, anon, authenticated;
+revoke execute on function public.default_game_config() from public, anon, authenticated;
 revoke execute on function public.pickup_point(uuid), public.use_item(uuid, double precision, double precision),
   public.game_stats(uuid), public.game_replay(uuid), public.save_replay(uuid) from public, anon;
 grant execute on function public.pickup_point(uuid), public.use_item(uuid, double precision, double precision),
