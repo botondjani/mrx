@@ -42,3 +42,6 @@ yarn-error.*
 
 # env (values live in EAS environment variables for builds)
 .env
+
+# downloaded build artifacts
+/apk
