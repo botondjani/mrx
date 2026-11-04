@@ -6,7 +6,7 @@ Expo (React Native, TypeScript) + Supabase (Postgres/PostGIS, Realtime, Edge Fun
 
 ```bash
 npm ci
-cp .env.example .env   # töltsd ki: Supabase URL + publishable key, MapTiler kulcs
+cp .env.example .env   # töltsd ki: Supabase URL + publishable key
 ```
 
 ## APK buildelése (EAS, felhőben – nem kell Android Studio)
@@ -24,7 +24,6 @@ A `.env` nem kerül fel a buildbe, ezért a változókat az EAS-ben kell megadni
 for E in development preview; do
   npx eas-cli@latest env:create --environment $E --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value "https://puionefgssztaoyugxks.supabase.co"
   npx eas-cli@latest env:create --environment $E --visibility plaintext --name EXPO_PUBLIC_SUPABASE_KEY --value "<publishable key>"
-  npx eas-cli@latest env:create --environment $E --visibility plaintext --name EXPO_PUBLIC_MAPTILER_KEY --value "<maptiler kulcs>"
 done
 ```
 

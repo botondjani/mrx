@@ -6,7 +6,7 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
 ## Infrastruktúra
 - Supabase projekt: `mrx` (`puionefgssztaoyugxks`, eu-central-1). Migrációk: `supabase/migrations`.
 - Expo SDK 58, expo-router (`src/app`), EAS Build (`eas.json`: `development`, `preview` → APK).
-- Env: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY` (publishable), `EXPO_PUBLIC_MAPTILER_KEY`.
+- Env: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY` (publishable). (`EXPO_PUBLIC_MAPTILER_KEY` már nem kell.)
   Lokálisan `.env` (gitignored), buildhez EAS environment variables.
 - Android package: `com.botondjani.mrx`.
 
@@ -63,6 +63,14 @@ Specifikáció: a master prompt (3 fázis). Kód/kommentek angolul, UI magyarul.
   5 percenként), `TELEPITES.md` a barátoknak.
 - A Supabase MCP `apply_migration` jóváhagyást kér adatmódosító/törlő utasításnál, ami a felhasználónál nem
   jelent meg → a migrációkat úgy bontottuk, hogy ne módosítsanak meglévő sorokat.
+
+### Térkép
+- A MapLibre Native (v11) a teszttelefonon csak fekete felületet rajzolt (TextureView-val is), ezért
+  lecseréltük: `GameMap` = Leaflet 1.9.4 WebView-ban (`react-native-webview`), OpenStreetMap-csempékkel
+  (a felhasználó kérésére; az OSM tile policy csak kis forgalmat enged – nagyobb közönségnél más szolgáltató kell),
+  noir hatás CSS-szűrővel. Az állapot JSON-ként megy be (`injectJavaScript`), a koppintás `postMessage`-dzsel jön ki.
+- `app.json` version 0.2.0 (új natív modul → új runtime; a 0.1.0-s APK-k nem kapnak több frissítést).
+- Dizájn: noir téma (`src/components/ui.tsx` `C` színek, Special Elite betű), Mr. X = bíbor, detektív = arany.
 
 ### Gyors frissítés (EAS Update)
 - `expo-updates`, `runtimeVersion: appVersion`, csatorna: `preview` (eas.json). Csak JS-változás:
