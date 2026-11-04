@@ -3,13 +3,21 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-export type PermissionStep = 'foreground' | 'background' | 'notifications' | 'battery' | 'done';
+export const PERMISSION_STEPS = ['foreground', 'background', 'notifications', 'battery'] as const;
+export type PermissionStep = (typeof PERMISSION_STEPS)[number] | 'done';
+
+/** Granted state of every step of the permission flow. */
+export async function permissionStatus(): Promise<Record<(typeof PERMISSION_STEPS)[number], boolean>> {
+  return {
+    foreground: (await Location.getForegroundPermissionsAsync()).granted,
+    background: (await Location.getBackgroundPermissionsAsync()).granted,
+    notifications: (await Notifications.getPermissionsAsync()).granted,
+    battery: Platform.OS !== 'android' || !(await Battery.isBatteryOptimizationEnabledAsync()),
+  };
+}
 
 /** First missing step of the permission flow. */
 export async function nextPermissionStep(): Promise<PermissionStep> {
-  if (!(await Location.getForegroundPermissionsAsync()).granted) return 'foreground';
-  if (!(await Location.getBackgroundPermissionsAsync()).granted) return 'background';
-  if (!(await Notifications.getPermissionsAsync()).granted) return 'notifications';
-  if (Platform.OS === 'android' && (await Battery.isBatteryOptimizationEnabledAsync())) return 'battery';
-  return 'done';
+  const s = await permissionStatus();
+  return PERMISSION_STEPS.find((k) => !s[k]) ?? 'done';
 }
